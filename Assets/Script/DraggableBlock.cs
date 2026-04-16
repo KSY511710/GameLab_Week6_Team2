@@ -2,17 +2,19 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
-using TMPro; // 📌 UI 텍스트 사용을 위해 추가
+using TMPro;
 
 public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
 {
-    [Header("Block Info")]
-    public int blockValue = 1;
+    [Header("Block Attributes")]
+    public int colorID = 1; // 인스펙터에서 1(빨강), 2(파랑) 등으로 설정
+    public int shapeID = 0; // 모양이 없다면 0으로 두세요.
+
     public GameObject blockPrefab;
 
     [Header("Inventory Settings")]
-    public int blockCount = 0; // 📌 현재 보유한 블록 개수
-    public TextMeshProUGUI countText; // 📌 "x0", "x1"을 표시할 텍스트
+    public int blockCount = 0;
+    public TextMeshProUGUI countText;
 
     [Header("Shape Settings")]
     public Vector2Int[] shapeCoords = { new Vector2Int(0, 0) };
@@ -41,7 +43,7 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
         originalShape = (Vector2Int[])shapeCoords.Clone();
         originalRotation = transform.rotation;
 
-        UpdateUI(); // 시작할 때 텍스트 및 투명도 갱신
+        UpdateUI();
     }
 
     void Update()
@@ -69,26 +71,23 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
         }
     }
 
-    // 📌 [추가] 뽑기에서 당첨되면 개수 증가
     public void AddBlock()
     {
         blockCount++;
         UpdateUI();
     }
 
-    // 📌 [추가] UI 갱신 함수 (개수가 0이면 반투명하게)
     private void UpdateUI()
     {
         if (countText != null) countText.text = $"x {blockCount}";
 
-        // 개수가 0이면 반투명, 있으면 불투명
         if (blockCount > 0) img.color = new Color(1f, 1f, 1f, 1f);
         else img.color = new Color(1f, 1f, 1f, 0.5f);
     }
 
     public void OnBeginDrag(PointerEventData eventData)
     {
-        if (blockCount <= 0) return; // 📌 개수가 0이면 드래그 불가
+        if (blockCount <= 0) return;
 
         isDragging = true;
         startPos = transform.position;
@@ -153,9 +152,9 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
 
         if (gridManager.CanPlaceShape(cellPos, shapeCoords))
         {
-            gridManager.PlaceShape(cellPos, shapeCoords, blockValue, blockPrefab);
+            // 📌 UI에서 들고 있던 속성들(colorID, shapeID)을 게임판에 넘겨줍니다.
+            gridManager.PlaceShape(cellPos, shapeCoords, colorID, shapeID, blockPrefab);
 
-            // 📌 [핵심] 설치 성공 시 개수 감소
             blockCount--;
             ResetToOriginalState();
             img.enabled = true;

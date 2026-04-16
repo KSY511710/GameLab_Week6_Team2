@@ -1,16 +1,61 @@
 using UnityEngine;
 using TMPro;
 using System.Collections.Generic;
+using System.Linq;
 
+// ==========================================
+//   [데이터 명찰 클래스들]
+// ==========================================
+[System.Serializable]
+public class BlockAttribute
+{
+    public int colorID;  // 색상 (1: 빨강, 2: 파랑 등 / 0: 색상 없음)
+    public int shapeID;  // 모양 (당장 안 써도 0으로 기본값 세팅)
+
+    public BlockAttribute(int color)
+    {
+        colorID = color;
+        shapeID = 0;
+    }
+
+    public BlockAttribute(int color, int shape)
+    {
+        colorID = color;
+        shapeID = shape;
+    }
+}
+
+public class BlockData
+{
+    public BlockAttribute attribute;
+    public bool isGrouped;
+    public int groupID;
+}
+
+public class GroupInfo
+{
+    public int groupID;
+    public int blockSize;
+    public int finalColor;
+    public int finalShape;
+    public int formationMultiplier;
+}
+
+// ==========================================
+//   [메인 매니저 클래스]
+// ==========================================
 public class PowerManager : MonoBehaviour
 {
     public static PowerManager Instance;
-    public int maxEfficiencySize = 10;
-    public int elecexpenses = 2;
-    public float bounus = 0.1f;
+
     [Header("UI References")]
     public TextMeshProUGUI powerText;
 
+    [Header("Group Settings")]
+    public int groupMinSize = 10; // 인스펙터에서 수정 가능 (10칸부터 그룹)
+
+    public List<GroupInfo> activeGroups = new List<GroupInfo>();
+    private int nextGroupID = 1;
     private int totalPower = 0;
 
     void Awake()
@@ -19,56 +64,38 @@ public class PowerManager : MonoBehaviour
         else Destroy(gameObject);
     }
 
-    public void CalculateTotalPower(int[,] boardData, int width, int height)
+    // 1. 그룹 검사 및 형성
+    public void CheckAndFormGroups(BlockData[,] board, int width, int height)
     {
-        int clusterCount = 0;      // 덩어리의 개수
-        int basePowerSum = 0;      // 덩어리들의 기저 전력 합계
-        int totalBuildingCells = 0; // 전체 설치된 칸 수 계산 로직 필요
         bool[,] visited = new bool[width, height];
 
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
-                // 발전소가 있고 아직 방문하지 않은 새로운 덩어리 발견!
-                if (boardData[x, y] > 0 && !visited[x, y])
+                BlockData cell = board[x, y];
+
+                // 빈 칸이 아니고, 색상이 있으며(>0), 아직 그룹이 아닌 블록 탐색
+                if (cell != null && cell.attribute.colorID > 0 && !cell.isGrouped && !visited[x, y])
                 {
-                    // 1. 덩어리 크기(n) 측정
-                    int size = GetClusterSize(x, y, boardData, visited, width, height);
+                    List<Vector2Int> cluster = GetUnlockedCluster(x, y, board, visited, width, height);
 
-                    int clusterBasePower = 0;
-                    for (int i = 1; i <= size; i++)
+                    // 10칸 이상 모였다면 그룹으로 확정(Lock)
+                    if (cluster.Count >= groupMinSize)
                     {
-                        if (i <= maxEfficiencySize) clusterBasePower += i; // 10칸까지는 정상 효율 (1, 2, 3...)
-                        else clusterBasePower += 1;          // 10칸 넘어가면 추가 전력 고정 (효율 급감)
+                        CreateNewGroup(cluster, board);
                     }
-
-                    // 3. 전체 합계에 더하고, 덩어리 개수 카운트 증가
-                    basePowerSum += clusterBasePower;
-                    totalBuildingCells += size;
-                    clusterCount++;
                 }
             }
         }
-        float multiplier = 1f + (clusterCount * bounus);
-        int calculatedPower = (int)(basePowerSum * multiplier);
-
-        // 📌 2. 유지비 차감 (한 칸당 10GWh 소모라고 가정)
-        int maintenanceCost = totalBuildingCells * elecexpenses;
-
-        // 최종 결과: (생산량 - 유지비)
-        totalPower = (int)calculatedPower - maintenanceCost;
-
-        // 전력이 마이너스가 되지 않도록 방지
-        if (totalPower < 0) totalPower = 0;
-
-        UpdateUI(calculatedPower, maintenanceCost, clusterCount, basePowerSum);
     }
 
-    private int GetClusterSize(int startX, int startY, int[,] boardData, bool[,] visited, int width, int height)
+    // BFS 덩어리 탐색
+    private List<Vector2Int> GetUnlockedCluster(int startX, int startY, BlockData[,] board, bool[,] visited, int width, int height)
     {
-        int size = 0;
+        List<Vector2Int> clusterList = new List<Vector2Int>();
         Queue<Vector2Int> queue = new Queue<Vector2Int>();
+
         queue.Enqueue(new Vector2Int(startX, startY));
         visited[startX, startY] = true;
 
@@ -77,7 +104,7 @@ public class PowerManager : MonoBehaviour
         while (queue.Count > 0)
         {
             Vector2Int curr = queue.Dequeue();
-            size++;
+            clusterList.Add(curr);
 
             foreach (Vector2Int dir in directions)
             {
@@ -86,7 +113,9 @@ public class PowerManager : MonoBehaviour
 
                 if (nextX >= 0 && nextX < width && nextY >= 0 && nextY < height)
                 {
-                    if (boardData[nextX, nextY] > 0 && !visited[nextX, nextY])
+                    BlockData nextCell = board[nextX, nextY];
+
+                    if (nextCell != null && nextCell.attribute.colorID > 0 && !nextCell.isGrouped && !visited[nextX, nextY])
                     {
                         visited[nextX, nextY] = true;
                         queue.Enqueue(new Vector2Int(nextX, nextY));
@@ -94,24 +123,96 @@ public class PowerManager : MonoBehaviour
                 }
             }
         }
-        return size;
+        return clusterList;
     }
 
-    private void UpdateUI(int production, int maintenance, int clusters, int baseSum)
+    // 새로운 속성 판정 시스템
+    private void CreateNewGroup(List<Vector2Int> cluster, BlockData[,] board)
+    {
+        Dictionary<int, int> colorCounts = new Dictionary<int, int>();
+        Dictionary<int, int> shapeCounts = new Dictionary<int, int>();
+
+        foreach (Vector2Int pos in cluster)
+        {
+            BlockData cell = board[pos.x, pos.y];
+            cell.isGrouped = true;
+            cell.groupID = nextGroupID;
+
+            int c = cell.attribute.colorID;
+            if (colorCounts.ContainsKey(c)) colorCounts[c]++;
+            else colorCounts[c] = 1;
+
+            int s = cell.attribute.shapeID;
+            if (shapeCounts.ContainsKey(s)) shapeCounts[s]++;
+            else shapeCounts[s] = 1;
+        }
+
+        int dominantColor = colorCounts.OrderByDescending(x => x.Value).First().Key;
+        int dominantShape = shapeCounts.OrderByDescending(x => x.Value).First().Key;
+        int bonusMultiplier = FormationDetector.GetFormationMultiplier(cluster);
+
+        GroupInfo newGroup = new GroupInfo
+        {
+            groupID = nextGroupID,
+            blockSize = cluster.Count,
+            finalColor = dominantColor,
+            finalShape = dominantShape,
+            formationMultiplier = bonusMultiplier
+
+        };
+
+        activeGroups.Add(newGroup);
+        nextGroupID++;
+
+        Debug.Log($"새 그룹 확정! ID:{newGroup.groupID} | 대표색상:{newGroup.finalColor} | 대표모양:{newGroup.finalShape}");
+    }
+
+    // 2. 전력 계산 (1칸당 1전력 일치시마다 *2)
+    public void CalculateTotalPower(BlockData[,] board, int width, int height)
+    {
+        int calculatedTotalPower = 0;
+        Dictionary<int, GroupInfo> groupLookup = activeGroups.ToDictionary(g => g.groupID);
+
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                BlockData cell = board[x, y];
+
+                if (cell == null || cell.attribute.colorID <= 0) continue;
+
+                int powerPerCell = 1;
+
+                if (cell.isGrouped && groupLookup.ContainsKey(cell.groupID))
+                {
+                    powerPerCell *= 2;
+                    GroupInfo myGroup = groupLookup[cell.groupID];
+
+                    if (cell.attribute.colorID == myGroup.finalColor) powerPerCell *= 2;
+                    if (cell.attribute.shapeID > 0 && cell.attribute.shapeID == myGroup.finalShape) powerPerCell *= 2;
+                    powerPerCell *= myGroup.formationMultiplier;
+                }
+
+                calculatedTotalPower += powerPerCell;
+            }
+        }
+
+        totalPower = calculatedTotalPower;
+        UpdateUI(totalPower, activeGroups.Count);
+    }
+
+    private void UpdateUI(int total, int groupCount)
     {
         if (powerText != null)
         {
-            // Rich Text를 사용하여 가독성을 높입니다.
-            // <color> 태그로 생산은 노란색, 유지비는 빨간색으로 표시합니다.
             powerText.text =
-                $"<color=yellow>Production: +{production}</color> GWh\n" +
-                $"<color=red>Maintenance: -{maintenance}</color> GWh\n" +
-                $"<size=30><b>Total: {totalPower} GWh</b></size>\n" +
-                $"<size=20>({baseSum} * {1f + clusters * 0.1f:F1} bonus)</size>";
+                $"<color=yellow><size=30><b>Total Power: {total} GWh</b></size></color>\n" +
+                $"<size=20>(Completed Groups: {groupCount})</size>";
         }
     }
+
     public int GetTotalPower()
     {
-        return totalPower; // 현재 계산되어 있는 최종 전력 생산량 반환
+        return totalPower;
     }
 }

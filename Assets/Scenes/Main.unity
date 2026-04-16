@@ -714,7 +714,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 98b560956fe334143865db102e0e99b1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DraggableBlock
-  blockValue: 1
+  colorID: 3
+  shapeID: 0
   blockPrefab: {fileID: 5604221498634425768, guid: 8e9e3f9eb80516a4ca4798e6d04833ce, type: 3}
   blockCount: 1
   countText: {fileID: 1560961455}
@@ -1275,7 +1276,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 98b560956fe334143865db102e0e99b1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DraggableBlock
-  blockValue: 1
+  colorID: 2
+  shapeID: 0
   blockPrefab: {fileID: 5604221498634425768, guid: 5d8b9955a9aa56b40a5849fddb4ed9b9, type: 3}
   blockCount: 1
   countText: {fileID: 1927031511}
@@ -1702,7 +1704,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 98b560956fe334143865db102e0e99b1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DraggableBlock
-  blockValue: 1
+  colorID: 1
+  shapeID: 0
   blockPrefab: {fileID: 5604221498634425768, guid: 3e2197957d8b57e48a7d9641f926a1e0, type: 3}
   blockCount: 1
   countText: {fileID: 1054751616}
@@ -2831,10 +2834,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ResourceManager
   TotalElectricity: 150
   CurrentDay: 1
-  drawCost: 50
+  drawCost: 1
   expandCost: 100
   expandMultiplier: 1.5
-  darwSumCost: 5
+  darwSumCost: 0
   baseGoal: 200
   goalInterval: 10
   GoalMultipier: 1.5
@@ -2889,10 +2892,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fbbe9b30ce711b34eb26bb0ec436bf9e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PowerManager
-  maxEfficiencySize: 10
-  elecexpenses: 2
-  bounus: 0.1
   powerText: {fileID: 1357951966}
+  groupMinSize: 9
 --- !u!4 &2145336449
 Transform:
   m_ObjectHideFlags: 0
