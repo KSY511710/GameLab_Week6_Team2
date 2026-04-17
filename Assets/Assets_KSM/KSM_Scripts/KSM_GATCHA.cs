@@ -11,6 +11,7 @@ using UnityEngine;
 /// 2. 색상별 뽑기 로그 출력
 /// 3. 발전 종류별 뽑기 로그 출력
 /// 4. 발전 타입 뽑기 로그 출력
+/// 5. 블록 크기(1칸 / 2칸 / 3칸)까지 함께 관리
 /// 
 /// 현재 단계에서는 실제 블록 지급, 자원 차감, 인벤토리 연동 없이
 /// "어떤 블록이 뽑혔는지"만 콘솔 로그로 확인하기 위한 테스트용 구조다.
@@ -100,6 +101,11 @@ public class KSM_GATCHA : MonoBehaviour
         [Tooltip("특수 발전 타입")]
         public BlockDevelopmentType developmentType = BlockDevelopmentType.None;
 
+        [Header("블록 크기 정보")]
+        [Range(1, 3)]
+        [Tooltip("블록 크기. 1, 2, 3 중 하나만 사용한다.")]
+        public int blockSize = 1;
+
         [Header("뽑기 설정")]
         [Tooltip("기본 뽑기 대상에 포함할지 여부")]
         public bool includeInBasicDraw = true;
@@ -110,7 +116,7 @@ public class KSM_GATCHA : MonoBehaviour
     }
 
     [Header("가챠 데이터 목록")]
-    [Tooltip("비워두면 Awake에서 기본 11개 데이터를 자동 생성한다.")]
+    [Tooltip("비워두면 Awake에서 기본 데이터를 자동 생성한다.")]
     [SerializeField]
     private List<GatchaBlockEntry> blockEntries = new List<GatchaBlockEntry>();
 
@@ -123,10 +129,20 @@ public class KSM_GATCHA : MonoBehaviour
     [SerializeField]
     private bool printVerboseLog = true;
 
+    [Header("현재 선택된 크기 필터")]
+    [Tooltip("true면 아래 requestedBlockSize를 현재 뽑기에 공통 적용한다.")]
+    [SerializeField]
+    private bool useRequestedBlockSizeFilter = false;
+
+    [Range(1, 3)]
+    [Tooltip("현재 선택된 블록 크기. 1, 2, 3 중 하나.")]
+    [SerializeField]
+    private int requestedBlockSize = 1;
+
     /// <summary>
     /// Awake
     /// 씬 시작 시 blockEntries가 비어 있다면
-    /// 바로 테스트할 수 있도록 기본 블록 11개를 자동 생성한다.
+    /// 바로 테스트할 수 있도록 기본 블록 데이터를 자동 생성한다.
     /// </summary>
     private void Awake()
     {
@@ -134,6 +150,8 @@ public class KSM_GATCHA : MonoBehaviour
         {
             blockEntries = new List<GatchaBlockEntry>();
         }
+
+        requestedBlockSize = NormalizeBlockSize(requestedBlockSize);
 
         if (blockEntries.Count == 0)
         {
@@ -156,74 +174,200 @@ public class KSM_GATCHA : MonoBehaviour
     }
 
     /// <summary>
+    /// 인스펙터에서 값이 바뀔 때 범위를 보정한다.
+    /// </summary>
+    private void OnValidate()
+    {
+        requestedBlockSize = NormalizeBlockSize(requestedBlockSize);
+
+        if (blockEntries == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < blockEntries.Count; i++)
+        {
+            GatchaBlockEntry entry = blockEntries[i];
+
+            if (entry == null)
+            {
+                continue;
+            }
+
+            entry.blockSize = NormalizeBlockSize(entry.blockSize);
+
+            if (entry.weight < 1)
+            {
+                entry.weight = 1;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 외부 UI 버튼이나 스크립트에서
+    /// "현재 선택된 블록 크기"를 1칸으로 설정할 때 사용한다.
+    /// </summary>
+    public void SetBlockSize1()
+    {
+        SetRequestedBlockSize(1);
+    }
+
+    /// <summary>
+    /// 외부 UI 버튼이나 스크립트에서
+    /// "현재 선택된 블록 크기"를 2칸으로 설정할 때 사용한다.
+    /// </summary>
+    public void SetBlockSize2()
+    {
+        SetRequestedBlockSize(2);
+    }
+
+    /// <summary>
+    /// 외부 UI 버튼이나 스크립트에서
+    /// "현재 선택된 블록 크기"를 3칸으로 설정할 때 사용한다.
+    /// </summary>
+    public void SetBlockSize3()
+    {
+        SetRequestedBlockSize(3);
+    }
+
+    /// <summary>
+    /// 외부에서 현재 사용할 블록 크기를 직접 전달한다.
+    /// 전달값은 1~3으로 보정되고, 이후 기존 Draw 함수들에 공통 적용된다.
+    /// </summary>
+    /// <param name="blockSize">원하는 블록 크기</param>
+    public void SetRequestedBlockSize(int blockSize)
+    {
+        requestedBlockSize = NormalizeBlockSize(blockSize);
+        useRequestedBlockSizeFilter = true;
+
+        Debug.Log($"[KSM_GATCHA] 현재 블록 크기 필터 설정 -> {requestedBlockSize}칸");
+    }
+
+    /// <summary>
+    /// 현재 설정된 블록 크기 필터를 해제한다.
+    /// 해제 후에는 크기 구분 없이 뽑는다.
+    /// </summary>
+    public void ClearRequestedBlockSizeFilter()
+    {
+        useRequestedBlockSizeFilter = false;
+        Debug.Log("[KSM_GATCHA] 블록 크기 필터 해제 -> 모든 크기 허용");
+    }
+
+    /// <summary>
     /// 기본 뽑기 버튼 연결용 함수.
     /// 일반 블록(Regular) 중 includeInBasicDraw == true 인 엔트리들만 대상으로 랜덤 선택한다.
+    /// 현재 크기 필터가 켜져 있으면 그 크기만 뽑는다.
     /// </summary>
     public void DrawBasicBlock()
     {
+        int sizeFilter = GetCurrentSizeFilter();
+
         TryDraw(
-            entry => entry.poolType == BlockPoolType.Regular && entry.includeInBasicDraw,
-            "기본 뽑기"
+            entry => entry.poolType == BlockPoolType.Regular &&
+                     entry.includeInBasicDraw &&
+                     MatchesBlockSize(entry, sizeFilter),
+            BuildDrawLabel("기본 뽑기", sizeFilter)
+        );
+    }
+
+    /// <summary>
+    /// 외부에서 크기값을 직접 넘겨 기본 뽑기를 실행한다.
+    /// 예: DrawBasicBlockBySize(2)
+    /// </summary>
+    /// <param name="blockSize">뽑고 싶은 블록 크기</param>
+    public void DrawBasicBlockBySize(int blockSize)
+    {
+        int normalizedSize = NormalizeBlockSize(blockSize);
+
+        TryDraw(
+            entry => entry.poolType == BlockPoolType.Regular &&
+                     entry.includeInBasicDraw &&
+                     MatchesBlockSize(entry, normalizedSize),
+            BuildDrawLabel("기본 뽑기", normalizedSize)
         );
     }
 
     /// <summary>
     /// 빨강 색상 블록만 대상으로 뽑기한다.
+    /// 현재 크기 필터가 켜져 있으면 그 크기만 뽑는다.
     /// </summary>
     public void DrawRedTheme()
     {
-        DrawByColor(BlockColorTheme.Red);
+        DrawByColor(BlockColorTheme.Red, GetCurrentSizeFilter());
     }
 
     /// <summary>
     /// 파랑 색상 블록만 대상으로 뽑기한다.
+    /// 현재 크기 필터가 켜져 있으면 그 크기만 뽑는다.
     /// </summary>
     public void DrawBlueTheme()
     {
-        DrawByColor(BlockColorTheme.Blue);
+        DrawByColor(BlockColorTheme.Blue, GetCurrentSizeFilter());
     }
 
     /// <summary>
     /// 노랑 색상 블록만 대상으로 뽑기한다.
+    /// 현재 크기 필터가 켜져 있으면 그 크기만 뽑는다.
     /// </summary>
     public void DrawYellowTheme()
     {
-        DrawByColor(BlockColorTheme.Yellow);
+        DrawByColor(BlockColorTheme.Yellow, GetCurrentSizeFilter());
     }
 
     /// <summary>
     /// 화력 발전 블록만 대상으로 뽑기한다.
+    /// 현재 크기 필터가 켜져 있으면 그 크기만 뽑는다.
     /// </summary>
     public void DrawThermalTheme()
     {
-        DrawByGeneration(BlockGenerationTheme.Thermal);
+        DrawByGeneration(BlockGenerationTheme.Thermal, GetCurrentSizeFilter());
     }
 
     /// <summary>
     /// 수력 발전 블록만 대상으로 뽑기한다.
+    /// 현재 크기 필터가 켜져 있으면 그 크기만 뽑는다.
     /// </summary>
     public void DrawHydroTheme()
     {
-        DrawByGeneration(BlockGenerationTheme.Hydro);
+        DrawByGeneration(BlockGenerationTheme.Hydro, GetCurrentSizeFilter());
     }
 
     /// <summary>
     /// 태양광 발전 블록만 대상으로 뽑기한다.
+    /// 현재 크기 필터가 켜져 있으면 그 크기만 뽑는다.
     /// </summary>
     public void DrawSolarTheme()
     {
-        DrawByGeneration(BlockGenerationTheme.Solar);
+        DrawByGeneration(BlockGenerationTheme.Solar, GetCurrentSizeFilter());
     }
 
     /// <summary>
     /// 발전 타입(특수 타입) 블록만 대상으로 뽑기한다.
-    /// 현재는 구름 생성 / 구름 제거 둘 중 하나가 뽑힌다.
+    /// 현재 크기 필터가 켜져 있으면 그 크기만 뽑는다.
     /// </summary>
     public void DrawDevelopmentBlock()
     {
+        int sizeFilter = GetCurrentSizeFilter();
+
         TryDraw(
-            entry => entry.poolType == BlockPoolType.Development,
-            "발전 타입 뽑기"
+            entry => entry.poolType == BlockPoolType.Development &&
+                     MatchesBlockSize(entry, sizeFilter),
+            BuildDrawLabel("발전 타입 뽑기", sizeFilter)
+        );
+    }
+
+    /// <summary>
+    /// 외부에서 크기값을 직접 넘겨 발전 타입 뽑기를 실행한다.
+    /// </summary>
+    /// <param name="blockSize">뽑고 싶은 블록 크기</param>
+    public void DrawDevelopmentBlockBySize(int blockSize)
+    {
+        int normalizedSize = NormalizeBlockSize(blockSize);
+
+        TryDraw(
+            entry => entry.poolType == BlockPoolType.Development &&
+                     MatchesBlockSize(entry, normalizedSize),
+            BuildDrawLabel("발전 타입 뽑기", normalizedSize)
         );
     }
 
@@ -231,12 +375,14 @@ public class KSM_GATCHA : MonoBehaviour
     /// 특정 색상 테마 블록만 대상으로 뽑기하는 내부 함수.
     /// </summary>
     /// <param name="colorTheme">대상 색상 테마</param>
-    private void DrawByColor(BlockColorTheme colorTheme)
+    /// <param name="blockSize">대상 블록 크기. 0 이하면 모든 크기 허용</param>
+    private void DrawByColor(BlockColorTheme colorTheme, int blockSize)
     {
         TryDraw(
             entry => entry.poolType == BlockPoolType.Regular &&
-                     entry.colorTheme == colorTheme,
-            $"{GetColorLabel(colorTheme)} 색상 뽑기"
+                     entry.colorTheme == colorTheme &&
+                     MatchesBlockSize(entry, blockSize),
+            BuildDrawLabel($"{GetColorLabel(colorTheme)} 색상 뽑기", blockSize)
         );
     }
 
@@ -244,12 +390,14 @@ public class KSM_GATCHA : MonoBehaviour
     /// 특정 발전 종류 블록만 대상으로 뽑기하는 내부 함수.
     /// </summary>
     /// <param name="generationTheme">대상 발전 종류</param>
-    private void DrawByGeneration(BlockGenerationTheme generationTheme)
+    /// <param name="blockSize">대상 블록 크기. 0 이하면 모든 크기 허용</param>
+    private void DrawByGeneration(BlockGenerationTheme generationTheme, int blockSize)
     {
         TryDraw(
             entry => entry.poolType == BlockPoolType.Regular &&
-                     entry.generationTheme == generationTheme,
-            $"{GetGenerationLabel(generationTheme)} 발전 뽑기"
+                     entry.generationTheme == generationTheme &&
+                     MatchesBlockSize(entry, blockSize),
+            BuildDrawLabel($"{GetGenerationLabel(generationTheme)} 발전 뽑기", blockSize)
         );
     }
 
@@ -262,14 +410,15 @@ public class KSM_GATCHA : MonoBehaviour
     /// </summary>
     /// <param name="filter">후보 엔트리를 고르는 조건</param>
     /// <param name="drawLabel">현재 뽑기 이름</param>
-    private void TryDraw(Predicate<GatchaBlockEntry> filter, string drawLabel)
+    /// <returns>선택된 엔트리. 실패하면 null</returns>
+    private GatchaBlockEntry TryDraw(Predicate<GatchaBlockEntry> filter, string drawLabel)
     {
         List<GatchaBlockEntry> candidates = GetCandidates(filter);
 
         if (candidates.Count == 0)
         {
             Debug.LogWarning($"[KSM_GATCHA] {drawLabel} 후보가 없습니다.");
-            return;
+            return null;
         }
 
         GatchaBlockEntry selectedEntry = GetWeightedRandomEntry(candidates);
@@ -277,7 +426,7 @@ public class KSM_GATCHA : MonoBehaviour
         if (selectedEntry == null)
         {
             Debug.LogWarning($"[KSM_GATCHA] {drawLabel} 실패 - 선택 결과가 null입니다.");
-            return;
+            return null;
         }
 
         if (printVerboseLog)
@@ -285,6 +434,7 @@ public class KSM_GATCHA : MonoBehaviour
             Debug.Log(
                 $"[KSM_GATCHA] {drawLabel} 결과 -> " +
                 $"이름: {selectedEntry.blockName}, " +
+                $"크기: {selectedEntry.blockSize}칸, " +
                 $"풀: {selectedEntry.poolType}, " +
                 $"색상: {selectedEntry.colorTheme}, " +
                 $"발전: {selectedEntry.generationTheme}, " +
@@ -293,13 +443,19 @@ public class KSM_GATCHA : MonoBehaviour
         }
         else
         {
-            Debug.Log($"[KSM_GATCHA] {drawLabel} 결과 -> {selectedEntry.blockName}");
+            Debug.Log(
+                $"[KSM_GATCHA] {drawLabel} 결과 -> " +
+                $"{selectedEntry.blockName} / {selectedEntry.blockSize}칸"
+            );
         }
+
+        return selectedEntry;
     }
 
     /// <summary>
     /// 조건에 맞는 후보 엔트리 목록을 반환한다.
-    /// 비활성 엔트리, null 엔트리, weight 0 이하 엔트리는 제외한다.
+    /// 비활성 엔트리, null 엔트리, weight 0 이하 엔트리,
+    /// 잘못된 blockSize 엔트리는 제외한다.
     /// </summary>
     /// <param name="filter">후보 필터 조건</param>
     /// <returns>사용 가능한 후보 목록</returns>
@@ -354,6 +510,11 @@ public class KSM_GATCHA : MonoBehaviour
             return false;
         }
 
+        if (entry.blockSize < 1 || entry.blockSize > 3)
+        {
+            return false;
+        }
+
         return true;
     }
 
@@ -393,6 +554,69 @@ public class KSM_GATCHA : MonoBehaviour
     }
 
     /// <summary>
+    /// 현재 선택된 크기 필터를 반환한다.
+    /// 필터가 꺼져 있으면 0을 반환해서 "모든 크기 허용"으로 처리한다.
+    /// </summary>
+    /// <returns>현재 활성 크기 필터</returns>
+    private int GetCurrentSizeFilter()
+    {
+        if (!useRequestedBlockSizeFilter)
+        {
+            return 0;
+        }
+
+        return NormalizeBlockSize(requestedBlockSize);
+    }
+
+    /// <summary>
+    /// 특정 엔트리가 원하는 블록 크기와 일치하는지 검사한다.
+    /// sizeFilter가 0 이하면 모든 크기를 허용한다.
+    /// </summary>
+    /// <param name="entry">검사할 엔트리</param>
+    /// <param name="sizeFilter">원하는 크기</param>
+    /// <returns>조건 만족 여부</returns>
+    private bool MatchesBlockSize(GatchaBlockEntry entry, int sizeFilter)
+    {
+        if (entry == null)
+        {
+            return false;
+        }
+
+        if (sizeFilter <= 0)
+        {
+            return true;
+        }
+
+        return entry.blockSize == sizeFilter;
+    }
+
+    /// <summary>
+    /// 전달된 블록 크기 값을 1~3 범위로 보정한다.
+    /// </summary>
+    /// <param name="blockSize">원본 크기 값</param>
+    /// <returns>1~3 범위로 보정된 값</returns>
+    private int NormalizeBlockSize(int blockSize)
+    {
+        return Mathf.Clamp(blockSize, 1, 3);
+    }
+
+    /// <summary>
+    /// 뽑기 라벨 문자열에 크기 정보를 추가해서 반환한다.
+    /// </summary>
+    /// <param name="baseLabel">기본 라벨</param>
+    /// <param name="blockSize">크기 필터</param>
+    /// <returns>표시용 라벨</returns>
+    private string BuildDrawLabel(string baseLabel, int blockSize)
+    {
+        if (blockSize <= 0)
+        {
+            return baseLabel;
+        }
+
+        return $"{baseLabel} ({blockSize}칸)";
+    }
+
+    /// <summary>
     /// 현재 등록된 전체 엔트리를 로그에 출력한다.
     /// blockEntries 자동 생성이 잘 됐는지 확인할 때 사용한다.
     /// </summary>
@@ -402,9 +626,16 @@ public class KSM_GATCHA : MonoBehaviour
         {
             GatchaBlockEntry entry = blockEntries[i];
 
+            if (entry == null)
+            {
+                Debug.LogWarning($"[KSM_GATCHA] Entry {i} -> null");
+                continue;
+            }
+
             Debug.Log(
                 $"[KSM_GATCHA] Entry {i} -> " +
                 $"이름: {entry.blockName}, " +
+                $"크기: {entry.blockSize}칸, " +
                 $"풀: {entry.poolType}, " +
                 $"색상: {entry.colorTheme}, " +
                 $"발전: {entry.generationTheme}, " +
@@ -416,36 +647,41 @@ public class KSM_GATCHA : MonoBehaviour
     }
 
     /// <summary>
-    /// blockEntries가 비어 있을 때 사용할 기본 블록 11개를 생성한다.
+    /// blockEntries가 비어 있을 때 사용할 기본 블록 데이터를 생성한다.
     /// 
-    /// 일반 블록 9개:
+    /// 일반 블록:
     /// - 빨강 / 파랑 / 노랑
     /// - 화력 / 수력 / 태양광
+    /// - 각 조합마다 1칸 / 2칸 / 3칸
     /// 
-    /// 발전 타입 블록 2개:
+    /// 발전 타입 블록:
     /// - 구름 생성
     /// - 구름 제거
+    /// - 각각 1칸 / 2칸 / 3칸
     /// </summary>
     private void CreateDefaultEntries()
     {
         blockEntries.Clear();
 
-        AddRegularEntry("빨강 화력 발전 블록", BlockColorTheme.Red, BlockGenerationTheme.Thermal);
-        AddRegularEntry("빨강 수력 발전 블록", BlockColorTheme.Red, BlockGenerationTheme.Hydro);
-        AddRegularEntry("빨강 태양광 발전 블록", BlockColorTheme.Red, BlockGenerationTheme.Solar);
+        for (int size = 1; size <= 3; size++)
+        {
+            AddRegularEntry($"{size}칸 빨강 화력 발전 블록", BlockColorTheme.Red, BlockGenerationTheme.Thermal, size);
+            AddRegularEntry($"{size}칸 빨강 수력 발전 블록", BlockColorTheme.Red, BlockGenerationTheme.Hydro, size);
+            AddRegularEntry($"{size}칸 빨강 태양광 발전 블록", BlockColorTheme.Red, BlockGenerationTheme.Solar, size);
 
-        AddRegularEntry("파랑 화력 발전 블록", BlockColorTheme.Blue, BlockGenerationTheme.Thermal);
-        AddRegularEntry("파랑 수력 발전 블록", BlockColorTheme.Blue, BlockGenerationTheme.Hydro);
-        AddRegularEntry("파랑 태양광 발전 블록", BlockColorTheme.Blue, BlockGenerationTheme.Solar);
+            AddRegularEntry($"{size}칸 파랑 화력 발전 블록", BlockColorTheme.Blue, BlockGenerationTheme.Thermal, size);
+            AddRegularEntry($"{size}칸 파랑 수력 발전 블록", BlockColorTheme.Blue, BlockGenerationTheme.Hydro, size);
+            AddRegularEntry($"{size}칸 파랑 태양광 발전 블록", BlockColorTheme.Blue, BlockGenerationTheme.Solar, size);
 
-        AddRegularEntry("노랑 화력 발전 블록", BlockColorTheme.Yellow, BlockGenerationTheme.Thermal);
-        AddRegularEntry("노랑 수력 발전 블록", BlockColorTheme.Yellow, BlockGenerationTheme.Hydro);
-        AddRegularEntry("노랑 태양광 발전 블록", BlockColorTheme.Yellow, BlockGenerationTheme.Solar);
+            AddRegularEntry($"{size}칸 노랑 화력 발전 블록", BlockColorTheme.Yellow, BlockGenerationTheme.Thermal, size);
+            AddRegularEntry($"{size}칸 노랑 수력 발전 블록", BlockColorTheme.Yellow, BlockGenerationTheme.Hydro, size);
+            AddRegularEntry($"{size}칸 노랑 태양광 발전 블록", BlockColorTheme.Yellow, BlockGenerationTheme.Solar, size);
 
-        AddDevelopmentEntry("구름 생성 블록", BlockDevelopmentType.CloudCreate);
-        AddDevelopmentEntry("구름 제거 블록", BlockDevelopmentType.CloudRemove);
+            AddDevelopmentEntry($"{size}칸 구름 생성 블록", BlockDevelopmentType.CloudCreate, size);
+            AddDevelopmentEntry($"{size}칸 구름 제거 블록", BlockDevelopmentType.CloudRemove, size);
+        }
 
-        Debug.Log("[KSM_GATCHA] 기본 가챠 데이터 11개를 자동 생성했습니다.");
+        Debug.Log($"[KSM_GATCHA] 기본 가챠 데이터 {blockEntries.Count}개를 자동 생성했습니다.");
     }
 
     /// <summary>
@@ -454,7 +690,12 @@ public class KSM_GATCHA : MonoBehaviour
     /// <param name="name">블록 이름</param>
     /// <param name="colorTheme">색상 분류</param>
     /// <param name="generationTheme">발전 종류 분류</param>
-    private void AddRegularEntry(string name, BlockColorTheme colorTheme, BlockGenerationTheme generationTheme)
+    /// <param name="blockSize">블록 크기</param>
+    private void AddRegularEntry(
+        string name,
+        BlockColorTheme colorTheme,
+        BlockGenerationTheme generationTheme,
+        int blockSize)
     {
         GatchaBlockEntry entry = new GatchaBlockEntry();
 
@@ -464,6 +705,7 @@ public class KSM_GATCHA : MonoBehaviour
         entry.colorTheme = colorTheme;
         entry.generationTheme = generationTheme;
         entry.developmentType = BlockDevelopmentType.None;
+        entry.blockSize = NormalizeBlockSize(blockSize);
         entry.includeInBasicDraw = true;
         entry.weight = 1;
 
@@ -475,7 +717,11 @@ public class KSM_GATCHA : MonoBehaviour
     /// </summary>
     /// <param name="name">블록 이름</param>
     /// <param name="developmentType">발전 타입 분류</param>
-    private void AddDevelopmentEntry(string name, BlockDevelopmentType developmentType)
+    /// <param name="blockSize">블록 크기</param>
+    private void AddDevelopmentEntry(
+        string name,
+        BlockDevelopmentType developmentType,
+        int blockSize)
     {
         GatchaBlockEntry entry = new GatchaBlockEntry();
 
@@ -485,6 +731,7 @@ public class KSM_GATCHA : MonoBehaviour
         entry.colorTheme = BlockColorTheme.None;
         entry.generationTheme = BlockGenerationTheme.None;
         entry.developmentType = developmentType;
+        entry.blockSize = NormalizeBlockSize(blockSize);
         entry.includeInBasicDraw = false;
         entry.weight = 1;
 
