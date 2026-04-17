@@ -9,8 +9,8 @@ public class BlockDrawManager : MonoBehaviour
 
     public void DrawNewBlock()
     {
-        // 전기가 충분할 때만 뽑기 진행
-        if (ResourceManager.Instance.SpendElectric(ResourceManager.Instance.drawCost))
+        // 돈이 충분할 때만 뽑기 진행
+        if (ResourceManager.Instance.SpendMoney(ResourceManager.Instance.drawCost))
         {
             // 1. 등록된 인벤토리 블록 중 하나를 랜덤으로 선택
             int randomIndex = Random.Range(0, inventoryBlocks.Count);
