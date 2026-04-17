@@ -29,6 +29,8 @@ public class GachaConnector : MonoBehaviour
     public void OnClickCompanyDrawFromDropdown()
     {
         if (gachaSystem == null || companyDropdown == null) return;
+        if (ResourceManager.Instance == null) return;
+        if (!ResourceManager.Instance.TryPayForThemeDraw()) return;
 
         // 드롭다운 순서: 0(첫번째 항목), 1(두번째), 2(세번째)...
         // 동료분 코드의 인덱스는 1(빨강), 2(파랑), 3(노랑)이므로 +1을 해줍니다.
@@ -43,6 +45,8 @@ public class GachaConnector : MonoBehaviour
     public void OnClickPartDrawFromDropdown()
     {
         if (gachaSystem == null || partDropdown == null) return;
+        if (ResourceManager.Instance == null) return;
+        if (!ResourceManager.Instance.TryPayForThemeDraw()) return;
 
         // 부품 역시 0번 항목부터 시작하므로 +1을 해서 1~9번 부품으로 맞춰줍니다.
         int selectedIndex = partDropdown.value + 1;
@@ -54,23 +58,28 @@ public class GachaConnector : MonoBehaviour
     }
 
     // ==========================================
-    // 🎲 1. 일반 뽑기
+    // 🎲 1. 일반 뽑기 (기본 뽑기 비용 곡선 사용)
     // ==========================================
     public void OnClickGeneralDraw()
     {
         if (gachaSystem == null) return;
+        if (ResourceManager.Instance == null) return;
+        if (!ResourceManager.Instance.TryPayForBasicDraw()) return;
 
         KSM_GATCHA.GatchaBlockEntry result = gachaSystem.DrawGeneralBlock();
         if (result != null) BroadcastDrawResult(result);
     }
 
     // ==========================================
-    // 🏢 2. 색깔(기업) 선택 후 뽑기
+    // 🏢 2. 색깔(기업) 선택 후 뽑기 (테마 뽑기 비용 곡선 사용)
     // ==========================================
     // 버튼의 OnClick () 에서 숫자를 적어주세요 -> 1(빨강), 2(파랑), 3(노랑)
     public void OnClickCompanyDraw(int companyIndex)
     {
         if (gachaSystem == null) return;
+        if (ResourceManager.Instance == null) return;
+        if (!ResourceManager.Instance.TryPayForThemeDraw()) return;
+
         Debug.Log(companyIndex);
         // 1. 가챠 기계에 뽑을 회사를 먼저 알려줍니다.
         gachaSystem.SetSelectedCompanyByIndex(companyIndex);
@@ -82,12 +91,14 @@ public class GachaConnector : MonoBehaviour
     }
 
     // ==========================================
-    // ⚙️ 3. 부품(기호) 선택 후 뽑기
+    // ⚙️ 3. 부품(기호) 선택 후 뽑기 (테마 뽑기 비용 곡선 사용)
     // ==========================================
     // 버튼의 OnClick () 에서 숫자를 적어주세요 -> 1 ~ 9
     public void OnClickPartDraw(int partIndex)
     {
         if (gachaSystem == null) return;
+        if (ResourceManager.Instance == null) return;
+        if (!ResourceManager.Instance.TryPayForThemeDraw()) return;
 
         // 1. 가챠 기계에 뽑을 부품을 먼저 알려줍니다.
         gachaSystem.SetSelectedPartSymbol(partIndex);

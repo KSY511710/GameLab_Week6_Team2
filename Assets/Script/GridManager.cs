@@ -101,12 +101,9 @@ public class GridManager : MonoBehaviour
 
     public void TryExpandBoard()
     {
-        int cost = ResourceManager.Instance.expandCost;
-
-        if (ResourceManager.Instance.SpendElectric(cost))
+        if (ResourceManager.Instance.TryPayForExpand())
         {
             ExpandBoard();
-            ResourceManager.Instance.IncreaseExpandCost();
         }
     }
 
