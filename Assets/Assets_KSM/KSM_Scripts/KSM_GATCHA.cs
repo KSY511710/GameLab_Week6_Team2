@@ -56,11 +56,11 @@ public class KSM_GATCHA : MonoBehaviour
         Symbol02,
         Symbol03,
         Symbol04,
-        Symbol05,
-        Symbol06,
-        Symbol07,
-        Symbol08,
-        Symbol09
+        //Symbol05,
+        //Symbol06,
+        //Symbol07,
+        //Symbol08,
+        //Symbol09
     }
 
     /// <summary>
@@ -1060,11 +1060,11 @@ public class KSM_GATCHA : MonoBehaviour
             case 2: return BlockSymbolType.Symbol02;
             case 3: return BlockSymbolType.Symbol03;
             case 4: return BlockSymbolType.Symbol04;
-            case 5: return BlockSymbolType.Symbol05;
-            case 6: return BlockSymbolType.Symbol06;
-            case 7: return BlockSymbolType.Symbol07;
-            case 8: return BlockSymbolType.Symbol08;
-            case 9: return BlockSymbolType.Symbol09;
+            //case 5: return BlockSymbolType.Symbol05;
+            //case 6: return BlockSymbolType.Symbol06;
+            //case 7: return BlockSymbolType.Symbol07;
+            //case 8: return BlockSymbolType.Symbol08;
+            //case 9: return BlockSymbolType.Symbol09;
             default: return BlockSymbolType.None;
         }
     }
@@ -1153,11 +1153,11 @@ public class KSM_GATCHA : MonoBehaviour
             BlockSymbolType.Symbol02,
             BlockSymbolType.Symbol03,
             BlockSymbolType.Symbol04,
-            BlockSymbolType.Symbol05,
-            BlockSymbolType.Symbol06,
-            BlockSymbolType.Symbol07,
-            BlockSymbolType.Symbol08,
-            BlockSymbolType.Symbol09
+            //BlockSymbolType.Symbol05,
+            //BlockSymbolType.Symbol06,
+            //BlockSymbolType.Symbol07,
+            //BlockSymbolType.Symbol08,
+            //BlockSymbolType.Symbol09
         };
 
         for (int size = 1; size <= 3; size++)
@@ -1265,11 +1265,11 @@ public class KSM_GATCHA : MonoBehaviour
             case BlockSymbolType.Symbol02: return "기호2";
             case BlockSymbolType.Symbol03: return "기호3";
             case BlockSymbolType.Symbol04: return "기호4";
-            case BlockSymbolType.Symbol05: return "기호5";
-            case BlockSymbolType.Symbol06: return "기호6";
-            case BlockSymbolType.Symbol07: return "기호7";
-            case BlockSymbolType.Symbol08: return "기호8";
-            case BlockSymbolType.Symbol09: return "기호9";
+            //case BlockSymbolType.Symbol05: return "기호5";
+            //case BlockSymbolType.Symbol06: return "기호6";
+            //case BlockSymbolType.Symbol07: return "기호7";
+            //case BlockSymbolType.Symbol08: return "기호8";
+            //case BlockSymbolType.Symbol09: return "기호9";
             default: return "없음";
         }
     }
