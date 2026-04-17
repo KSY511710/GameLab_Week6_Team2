@@ -3320,7 +3320,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7472d7eb6cab719419e97aa0c97c9fef, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GridManager
-  StartGrid: 6
+  StartGrid: 10
   width: 5
   height: 5
   groundTilemap: {fileID: 1373344025}
@@ -5640,7 +5640,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1825787295
 RectTransform:
   m_ObjectHideFlags: 0
