@@ -108,7 +108,7 @@ public class GachaConnector : MonoBehaviour
     }
     private void BroadcastDrawResult(KSM_GATCHA.GatchaBlockEntry entry)
     {
-        Debug.Log($"📢 [방송] 가챠 당첨! : {entry.companyColor} / {entry.symbolType} / {entry.blockSize}칸");
+        Debug.Log($"[방송] 가챠 당첨! : {entry.companyColor} / {entry.symbolType} / {entry.blockSize}칸");
 
         // 확성기에 구독자(듣고 있는 블록)가 있다면 결과를 쏴줍니다!
         OnBlockDrawn?.Invoke(entry.companyColor, entry.symbolType, entry.blockSize);
