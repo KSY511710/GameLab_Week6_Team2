@@ -85,7 +85,8 @@ public class GridManager : MonoBehaviour
             {
                 attribute = new BlockAttribute(colorID, shapeID),
                 isGrouped = false,
-                groupID = 0
+                groupID = 0,
+                blockObject = cellPart
             };
 
             buildingObjects[arrayIdx.x, arrayIdx.y] = buildingParent;

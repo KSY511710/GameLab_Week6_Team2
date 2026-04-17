@@ -16121,7 +16121,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1825787295
 RectTransform:
   m_ObjectHideFlags: 0
@@ -17838,7 +17838,7 @@ MonoBehaviour:
   specialDrawCost: 1
   ticketsPerSkippedDay: 1
   startingElectricity: 0
-  startingMoney: 100
+  startingMoney: 40
   startingTickets: 0
   electricityText: {fileID: 1556370298}
   moneyText: {fileID: 1125052723}

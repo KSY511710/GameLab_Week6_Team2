@@ -30,6 +30,7 @@ public class BlockData
     public BlockAttribute attribute;
     public bool isGrouped;
     public int groupID;
+    public GameObject blockObject;
 }
 
 public class GroupInfo
@@ -171,6 +172,36 @@ public class PowerManager : MonoBehaviour
             formationMultiplier = shapeBonus,
             groupPower = finalPower
         };
+
+        // =========================================================
+        // 🚨 여기에 복사해서 붙여넣으세요! 🚨
+        // =========================================================
+        Color dominantRealColor = Color.white;
+        if (dominantColor == 1) dominantRealColor = new Color(1f, 0.2f, 0.2f);
+        else if (dominantColor == 2) dominantRealColor = new Color(0.2f, 0.4f, 1f);
+        else if (dominantColor == 3) dominantRealColor = new Color(1f, 0.9f, 0.2f);
+
+        List<PlacedBlockVisual> currentGroupVisuals = new List<PlacedBlockVisual>();
+
+        foreach (Vector2Int pos in cluster)
+        {
+            GameObject placedBlockObj = board[pos.x, pos.y].blockObject;
+            if (placedBlockObj != null)
+            {
+                PlacedBlockVisual visualControl = placedBlockObj.GetComponent<PlacedBlockVisual>();
+                if (visualControl != null)
+                {
+                    currentGroupVisuals.Add(visualControl); // 명단에 추가!
+                }
+            }
+        }
+
+        foreach (PlacedBlockVisual visualControl in currentGroupVisuals)
+        {
+            // 팀원 명단(currentGroupVisuals)을 함께 넘겨줍니다!
+            visualControl.SetGroupState(true, dominantRealColor, currentGroupVisuals);
+        }
+        // =========================================================
 
         string debugMsg = $"<color=#00FFFF><b>[전력 정산 영수증 - 그룹 {nextGroupID}]</b></color>\n" +
                           $"1. 크기 및 다양성 : 기본 {baseProduction}칸 + 부품 {uniquePartsCount}종 = <b>{baseProduction + uniquePartsCount}</b>\n" +
