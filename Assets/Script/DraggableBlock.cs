@@ -152,7 +152,6 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
 
         if (gridManager.CanPlaceShape(cellPos, shapeCoords))
         {
-            // 📌 UI에서 들고 있던 속성들(colorID, shapeID)을 게임판에 넘겨줍니다.
             gridManager.PlaceShape(cellPos, shapeCoords, colorID, shapeID, blockPrefab);
 
             blockCount--;

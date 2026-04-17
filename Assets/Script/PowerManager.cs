@@ -39,6 +39,7 @@ public class GroupInfo
     public int finalColor;
     public int finalShape;
     public int formationMultiplier;
+    public float groupPower;
 }
 
 // ==========================================
@@ -130,7 +131,7 @@ public class PowerManager : MonoBehaviour
     private void CreateNewGroup(List<Vector2Int> cluster, BlockData[,] board)
     {
         Dictionary<int, int> colorCounts = new Dictionary<int, int>();
-        Dictionary<int, int> shapeCounts = new Dictionary<int, int>();
+        HashSet<int> uniqueParts = new HashSet<int>();
 
         foreach (Vector2Int pos in cluster)
         {
@@ -142,65 +143,73 @@ public class PowerManager : MonoBehaviour
             if (colorCounts.ContainsKey(c)) colorCounts[c]++;
             else colorCounts[c] = 1;
 
-            int s = cell.attribute.shapeID;
-            if (shapeCounts.ContainsKey(s)) shapeCounts[s]++;
-            else shapeCounts[s] = 1;
+            uniqueParts.Add(cell.attribute.shapeID); // 부품 종류 수집
         }
 
+        // --- 새로운 전력 계산 공식 ---
+        int baseProduction = cluster.Count;
+        int uniquePartsCount = uniqueParts.Count;
+
+        int shapeBonus = FormationDetector.GetFormationMultiplier(cluster);
+        if (shapeBonus < 0) shapeBonus = 0;
+        int completionMultiplier = 2 + shapeBonus;
+
+        int maxColorCount = colorCounts.Values.Max();
+        int restColorCount = cluster.Count - maxColorCount;
+        float colorMultiplier = 1f + (maxColorCount - restColorCount) * 0.2f;
+
+        float finalPower = (baseProduction + uniquePartsCount) * completionMultiplier * colorMultiplier;
+
+        // --- 정보 저장 ---
         int dominantColor = colorCounts.OrderByDescending(x => x.Value).First().Key;
-        int dominantShape = shapeCounts.OrderByDescending(x => x.Value).First().Key;
-        int bonusMultiplier = FormationDetector.GetFormationMultiplier(cluster);
 
         GroupInfo newGroup = new GroupInfo
         {
             groupID = nextGroupID,
             blockSize = cluster.Count,
             finalColor = dominantColor,
-            finalShape = dominantShape,
-            formationMultiplier = bonusMultiplier
-
+            formationMultiplier = shapeBonus,
+            groupPower = finalPower
         };
+
+        string debugMsg = $"<color=#00FFFF><b>[전력 정산 영수증 - 그룹 {nextGroupID}]</b></color>\n" +
+                          $"1. 크기 및 다양성 : 기본 {baseProduction}칸 + 부품 {uniquePartsCount}종 = <b>{baseProduction + uniquePartsCount}</b>\n" +
+                          $"2. 형태 보너스 : 기본 2 + 모양 {shapeBonus} = <b>x {completionMultiplier}</b>\n" +
+                          $"3. 색상 순도 : 주력 {maxColorCount}칸 / 불순물 {restColorCount}칸 = <b>x {colorMultiplier:F2}</b>\n" +
+                          $"<color=#FFFF00><b>▶ 최종 생산량 : ({baseProduction} + {uniquePartsCount}) * {completionMultiplier} * {colorMultiplier:F2} = {finalPower} GWh</b></color>";
+
+        Debug.Log(debugMsg);
 
         activeGroups.Add(newGroup);
         nextGroupID++;
-
-        Debug.Log($"새 그룹 확정! ID:{newGroup.groupID} | 대표색상:{newGroup.finalColor} | 대표모양:{newGroup.finalShape}");
     }
 
-    // 2. 전력 계산 (1칸당 1전력 일치시마다 *2)
     public void CalculateTotalPower(BlockData[,] board, int width, int height)
     {
-        int calculatedTotalPower = 0;
-        Dictionary<int, GroupInfo> groupLookup = activeGroups.ToDictionary(g => g.groupID);
+        float calculatedTotalPower = 0;
+        int ungroupedBlocks = 0;
+
+        // 📌 최적화: 그룹 전력만 쓱 더합니다.
+        foreach (GroupInfo group in activeGroups)
+        {
+            calculatedTotalPower += group.groupPower;
+        }
 
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
                 BlockData cell = board[x, y];
-
-                if (cell == null || cell.attribute.colorID <= 0) continue;
-
-                int powerPerCell = 1;
-
-                if (cell.isGrouped && groupLookup.ContainsKey(cell.groupID))
+                if (cell != null && cell.attribute.colorID > 0 && !cell.isGrouped)
                 {
-                    powerPerCell *= 2;
-                    GroupInfo myGroup = groupLookup[cell.groupID];
-
-                    if (cell.attribute.colorID == myGroup.finalColor) powerPerCell *= 2;
-                    if (cell.attribute.shapeID > 0 && cell.attribute.shapeID == myGroup.finalShape) powerPerCell *= 2;
-                    powerPerCell *= myGroup.formationMultiplier;
+                    ungroupedBlocks++;
                 }
-
-                calculatedTotalPower += powerPerCell;
             }
         }
 
-        totalPower = calculatedTotalPower;
+        totalPower = (int)(calculatedTotalPower + ungroupedBlocks);
         UpdateUI(totalPower, activeGroups.Count);
     }
-
     private void UpdateUI(int total, int groupCount)
     {
         if (powerText != null)
