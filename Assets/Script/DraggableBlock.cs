@@ -7,8 +7,8 @@ using TMPro;
 public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
 {
     [Header("Block Attributes")]
-    public int colorID = 1; // 인스펙터에서 1(빨강), 2(파랑) 등으로 설정
-    public int shapeID = 0; // 모양이 없다면 0으로 두세요.
+    public KSM_GATCHA.CompanyColor companyColor = KSM_GATCHA.CompanyColor.Red;
+    public KSM_GATCHA.BlockSymbolType symbolType = KSM_GATCHA.BlockSymbolType.Symbol01;
 
     public GameObject blockPrefab;
 
@@ -152,7 +152,7 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
 
         if (gridManager.CanPlaceShape(cellPos, shapeCoords))
         {
-            gridManager.PlaceShape(cellPos, shapeCoords, colorID, shapeID, blockPrefab);
+            gridManager.PlaceShape(cellPos, shapeCoords, (int)companyColor, (int)symbolType, blockPrefab);
 
             blockCount--;
             ResetToOriginalState();

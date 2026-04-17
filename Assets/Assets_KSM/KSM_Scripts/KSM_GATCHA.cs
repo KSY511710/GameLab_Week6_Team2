@@ -395,7 +395,7 @@ public class KSM_GATCHA : MonoBehaviour
     /// 전체 블록 중 랜덤 1개를 뽑는다.
     /// 크기 필터가 켜져 있으면 해당 크기만 대상으로 한다.
     /// </summary>
-    public void DrawGeneralBlock()
+    public GatchaBlockEntry DrawGeneralBlock()
     {
         int sizeFilter = GetCurrentSizeFilter();
 
@@ -408,12 +408,13 @@ public class KSM_GATCHA : MonoBehaviour
         if (selectedEntry == null)
         {
             Debug.LogWarning($"[KSM_GATCHA] {BuildDrawLabel("일반 뽑기", sizeFilter)} 후보가 없습니다.");
-            return;
+            return null; // 📌 return; 을 return null; 로 변경
         }
 
         PrintDrawResult(BuildDrawLabel("일반 뽑기", sizeFilter), selectedEntry);
-    }
 
+        return selectedEntry; // 📌 맨 마지막에 당첨 결과 반환!
+    }
     /// <summary>
     /// 기존 DrawBasicBlock 이름을 그대로 쓰고 싶을 때를 위한 호환용 함수.
     /// 현재는 일반 뽑기와 동일하게 동작한다.
@@ -429,14 +430,15 @@ public class KSM_GATCHA : MonoBehaviour
     /// 2. 결정된 회사 안에서 기호를 랜덤 결정
     /// 3. 최종 엔트리 선택
     /// </summary>
-    public void DrawCompanyBlock()
+    // 📌 void -> GatchaBlockEntry 로 변경
+    public GatchaBlockEntry DrawCompanyBlock()
     {
         int sizeFilter = GetCurrentSizeFilter();
 
         if (selectedCompany == CompanyColor.None)
         {
             Debug.LogWarning("[KSM_GATCHA] 기업 블럭 뽑기 실패 - 먼저 회사를 선택해야 합니다.");
-            return;
+            return null; // 📌 여기부터 나오는 return; 은 전부 return null; 로 변경
         }
 
         List<GatchaBlockEntry> sizeFilteredCandidates = GetCandidates(
@@ -446,7 +448,7 @@ public class KSM_GATCHA : MonoBehaviour
         if (sizeFilteredCandidates.Count == 0)
         {
             Debug.LogWarning($"[KSM_GATCHA] {BuildDrawLabel("기업 블럭 뽑기", sizeFilter)} 후보가 없습니다.");
-            return;
+            return null;
         }
 
         CompanyColor finalCompany = SelectCompanyForCompanyDraw(sizeFilteredCandidates, selectedCompany);
@@ -454,7 +456,7 @@ public class KSM_GATCHA : MonoBehaviour
         if (finalCompany == CompanyColor.None)
         {
             Debug.LogWarning($"[KSM_GATCHA] {BuildDrawLabel("기업 블럭 뽑기", sizeFilter)} 실패 - 회사 선택 결과가 없습니다.");
-            return;
+            return null;
         }
 
         BlockSymbolType finalSymbol = SelectRandomSymbolFromCompany(sizeFilteredCandidates, finalCompany);
@@ -462,7 +464,7 @@ public class KSM_GATCHA : MonoBehaviour
         if (finalSymbol == BlockSymbolType.None)
         {
             Debug.LogWarning($"[KSM_GATCHA] {BuildDrawLabel("기업 블럭 뽑기", sizeFilter)} 실패 - 기호 선택 결과가 없습니다.");
-            return;
+            return null;
         }
 
         List<GatchaBlockEntry> finalCandidates = GetCandidates(
@@ -476,7 +478,7 @@ public class KSM_GATCHA : MonoBehaviour
         if (selectedEntry == null)
         {
             Debug.LogWarning($"[KSM_GATCHA] {BuildDrawLabel("기업 블럭 뽑기", sizeFilter)} 실패 - 최종 엔트리가 없습니다.");
-            return;
+            return null;
         }
 
         PrintDrawResult(
@@ -484,6 +486,8 @@ public class KSM_GATCHA : MonoBehaviour
             selectedEntry,
             $"선택 회사: {GetCompanyLabel(selectedCompany)} / 최종 회사: {GetCompanyLabel(finalCompany)} / 최종 기호: {GetSymbolLabel(finalSymbol)}"
         );
+
+        return selectedEntry; // 📌 당첨 결과 반환!
     }
 
     /// <summary>
@@ -492,14 +496,15 @@ public class KSM_GATCHA : MonoBehaviour
     /// 2. 결정된 기호에 대해 색상은 빨/파/노 1/3 확률
     /// 3. 최종 엔트리 선택
     /// </summary>
-    public void DrawPartBlock()
+    // 📌 void -> GatchaBlockEntry 로 변경
+    public GatchaBlockEntry DrawPartBlock()
     {
         int sizeFilter = GetCurrentSizeFilter();
 
         if (selectedPartSymbol == BlockSymbolType.None)
         {
             Debug.LogWarning("[KSM_GATCHA] 부품 뽑기 실패 - 먼저 부품(기호)을 선택해야 합니다.");
-            return;
+            return null; // 📌 마찬가지로 전부 return null; 로 변경
         }
 
         List<GatchaBlockEntry> sizeFilteredCandidates = GetCandidates(
@@ -509,7 +514,7 @@ public class KSM_GATCHA : MonoBehaviour
         if (sizeFilteredCandidates.Count == 0)
         {
             Debug.LogWarning($"[KSM_GATCHA] {BuildDrawLabel("부품 뽑기", sizeFilter)} 후보가 없습니다.");
-            return;
+            return null;
         }
 
         BlockSymbolType finalSymbol = SelectSymbolForPartDraw(sizeFilteredCandidates, selectedPartSymbol);
@@ -517,7 +522,7 @@ public class KSM_GATCHA : MonoBehaviour
         if (finalSymbol == BlockSymbolType.None)
         {
             Debug.LogWarning($"[KSM_GATCHA] {BuildDrawLabel("부품 뽑기", sizeFilter)} 실패 - 부품 선택 결과가 없습니다.");
-            return;
+            return null;
         }
 
         CompanyColor finalCompany = SelectRandomCompanyFromSymbol(sizeFilteredCandidates, finalSymbol);
@@ -525,7 +530,7 @@ public class KSM_GATCHA : MonoBehaviour
         if (finalCompany == CompanyColor.None)
         {
             Debug.LogWarning($"[KSM_GATCHA] {BuildDrawLabel("부품 뽑기", sizeFilter)} 실패 - 색상 선택 결과가 없습니다.");
-            return;
+            return null;
         }
 
         List<GatchaBlockEntry> finalCandidates = GetCandidates(
@@ -539,7 +544,7 @@ public class KSM_GATCHA : MonoBehaviour
         if (selectedEntry == null)
         {
             Debug.LogWarning($"[KSM_GATCHA] {BuildDrawLabel("부품 뽑기", sizeFilter)} 실패 - 최종 엔트리가 없습니다.");
-            return;
+            return null;
         }
 
         PrintDrawResult(
@@ -547,6 +552,8 @@ public class KSM_GATCHA : MonoBehaviour
             selectedEntry,
             $"선택 부품: {GetSymbolLabel(selectedPartSymbol)} / 최종 부품: {GetSymbolLabel(finalSymbol)} / 최종 색상: {GetCompanyLabel(finalCompany)}"
         );
+
+        return selectedEntry; // 📌 당첨 결과 반환!
     }
 
     /// <summary>

@@ -1,13 +1,15 @@
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
 
-// 📌 가챠 결과(색상, 크기)와 실제 UI 인벤토리(DraggableBlock)를 짝지어주는 데이터 구조
+// 📌 가챠 결과(회사, 부품, 크기)와 실제 UI 인벤토리(DraggableBlock)를 짝지어주는 데이터 구조
 [System.Serializable]
 public class InventorySlotMapping
 {
-    public KSM_GATCHA.BlockColorTheme colorTheme; // 빨강, 파랑, 노랑
-    public int blockSize;                         // 1, 2, 3칸
-    public DraggableBlock targetUIBlock;          // 개수를 올려줄 UI 블록
+    public KSM_GATCHA.CompanyColor gachaCompany;   // 회사(색상): Red, Blue, Yellow
+    public KSM_GATCHA.BlockSymbolType gachaSymbol; // 부품(기호): Symbol01 ~ 09
+    public int gachaSize;                          // 크기: 1, 2, 3칸
+    public DraggableBlock targetUIBlock;           // 개수를 올려줄 UI 블록
 }
 
 public class GachaConnector : MonoBehaviour
@@ -16,72 +18,115 @@ public class GachaConnector : MonoBehaviour
     public KSM_GATCHA gachaSystem;
 
     [Header("인벤토리 매핑 (인스펙터에서 연결)")]
-    // 여기에 빨강1칸, 빨강2칸 ... 총 9개의 매핑을 인스펙터에서 등록합니다.
     public List<InventorySlotMapping> slotMappings = new List<InventorySlotMapping>();
+    [Header("드롭다운 UI 연결")]
+    public TMP_Dropdown companyDropdown; // 유니티에서 기업 선택 드롭다운 연결
+    public TMP_Dropdown partDropdown;    // 유니티에서 부품 선택 드롭다운 연결
 
     [Header("상점 패널")]
     public GameObject Shop;
-
-    // UI에서 "뽑기 버튼"을 클릭했을 때 이 함수를 실행하게 연결합니다.
-    public void OnClickDrawButton()
+    public void OnClickCompanyDrawFromDropdown()
     {
-        if (gachaSystem == null) return;
+        if (gachaSystem == null || companyDropdown == null) return;
 
-        // 1. 동료의 가챠 시스템에서 블록을 하나 뽑아옵니다.
-        KSM_GATCHA.GatchaBlockEntry result = gachaSystem.DrawBasicBlock();
+        // 드롭다운 순서: 0(첫번째 항목), 1(두번째), 2(세번째)...
+        // 동료분 코드의 인덱스는 1(빨강), 2(파랑), 3(노랑)이므로 +1을 해줍니다.
+        int selectedIndex = companyDropdown.value + 1;
 
-        // 2. 뽑기 성공 시, 매핑된 인벤토리를 찾아 개수를 올려줍니다.
-        if (result != null)
-        {
-            AddBlockToInventory(result);
-        }
-    }
-    public void OnClickRedDrawButton()
-    {
-        if (gachaSystem == null) return;
-        // 동료 코드의 '빨강 테마 뽑기'를 실행하고 결과를 받아옵니다.
-        KSM_GATCHA.GatchaBlockEntry result = gachaSystem.DrawRedTheme();
+        gachaSystem.SetSelectedCompanyByIndex(selectedIndex);
+        KSM_GATCHA.GatchaBlockEntry result = gachaSystem.DrawCompanyBlock();
 
         if (result != null) AddBlockToInventory(result);
     }
 
-    public void OnClickBlueDrawButton()
+    public void OnClickPartDrawFromDropdown()
     {
-        if (gachaSystem == null) return;
-        KSM_GATCHA.GatchaBlockEntry result = gachaSystem.DrawBlueTheme();
-        if (result != null) AddBlockToInventory(result);
-    }
+        if (gachaSystem == null || partDropdown == null) return;
 
-    public void OnClickYellowDrawButton()
-    {
-        if (gachaSystem == null) return;
-        KSM_GATCHA.GatchaBlockEntry result = gachaSystem.DrawYellowTheme();
-        if (result != null) AddBlockToInventory(result);
-    }
-    public void OnClickSizeDrawButton(int size)
-    {
-        if (gachaSystem == null) return;
+        // 부품 역시 0번 항목부터 시작하므로 +1을 해서 1~9번 부품으로 맞춰줍니다.
+        int selectedIndex = partDropdown.value + 1;
 
-        // 버튼에서 넘겨준 숫자(size)를 그대로 가챠 시스템에 전달합니다!
-        KSM_GATCHA.GatchaBlockEntry result = gachaSystem.DrawBasicBlockBySize(size);
+        gachaSystem.SetSelectedPartSymbol(selectedIndex);
+        KSM_GATCHA.GatchaBlockEntry result = gachaSystem.DrawPartBlock();
 
         if (result != null) AddBlockToInventory(result);
     }
+
+    // ==========================================
+    // 🎲 1. 일반 뽑기
+    // ==========================================
+    public void OnClickGeneralDraw()
+    {
+        if (gachaSystem == null) return;
+
+        KSM_GATCHA.GatchaBlockEntry result = gachaSystem.DrawGeneralBlock();
+        if (result != null) AddBlockToInventory(result);
+    }
+
+    // ==========================================
+    // 🏢 2. 색깔(기업) 선택 후 뽑기
+    // ==========================================
+    // 버튼의 OnClick () 에서 숫자를 적어주세요 -> 1(빨강), 2(파랑), 3(노랑)
+    public void OnClickCompanyDraw(int companyIndex)
+    {
+        if (gachaSystem == null) return;
+        Debug.Log(companyIndex);
+        // 1. 가챠 기계에 뽑을 회사를 먼저 알려줍니다.
+        gachaSystem.SetSelectedCompanyByIndex(companyIndex);
+
+        // 2. 기업 확정 뽑기 레버를 당깁니다!
+        KSM_GATCHA.GatchaBlockEntry result = gachaSystem.DrawCompanyBlock();
+
+        if (result != null) AddBlockToInventory(result);
+    }
+
+    // ==========================================
+    // ⚙️ 3. 부품(기호) 선택 후 뽑기
+    // ==========================================
+    // 버튼의 OnClick () 에서 숫자를 적어주세요 -> 1 ~ 9
+    public void OnClickPartDraw(int partIndex)
+    {
+        if (gachaSystem == null) return;
+
+        // 1. 가챠 기계에 뽑을 부품을 먼저 알려줍니다.
+        gachaSystem.SetSelectedPartSymbol(partIndex);
+
+        // 2. 부품 확정 뽑기 레버를 당깁니다!
+        KSM_GATCHA.GatchaBlockEntry result = gachaSystem.DrawPartBlock();
+
+        if (result != null) AddBlockToInventory(result);
+    }
+
+    // ==========================================
+    // 🛒 상점 UI 켜고 끄기
+    // ==========================================
     public void OnOffShop(bool ShopState)
     {
-        if(Shop == null) return;
+        if (Shop == null) return;
         Shop.SetActive(ShopState);
     }
+
+    // ==========================================
+    // 📦 인벤토리에 블록 추가 (핵심 매핑)
+    // ==========================================
     private void AddBlockToInventory(KSM_GATCHA.GatchaBlockEntry entry)
     {
         foreach (var slot in slotMappings)
         {
-            // 가챠에서 나온 색상과 크기가 일치하는 UI 블록 슬롯을 찾습니다.
-            if (slot.colorTheme == entry.colorTheme && slot.blockSize == entry.blockSize)
+            // 🌟 색상(회사), 부품(기호), 크기 3가지가 모두 똑같은 슬롯을 찾습니다!
+            if (slot.gachaCompany == entry.companyColor &&
+                slot.gachaSymbol == entry.symbolType &&
+                slot.gachaSize == entry.blockSize)
             {
-                // 찾았다면 해당 DraggableBlock의 개수를 증가시킵니다!
-                slot.targetUIBlock.AddBlock();
-                Debug.Log($"✅ 인벤토리에 추가됨! [{entry.colorTheme} 색상 / {entry.blockSize}칸]");
+                if (slot.targetUIBlock != null)
+                {
+                    slot.targetUIBlock.AddBlock(); // 인벤토리 숫자 증가!
+                    Debug.Log($"✅ 인벤토리 지급 완료: [{entry.companyColor} / {entry.symbolType} / {entry.blockSize}칸]");
+                }
+                else
+                {
+                    Debug.LogWarning("⚠️ 매핑은 찾았지만 연결된 타겟 UI 블록이 없습니다!");
+                }
                 return;
             }
         }
