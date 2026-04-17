@@ -52,7 +52,7 @@ public class PowerManager : MonoBehaviour
     public TextMeshProUGUI powerText;
 
     [Header("Group Settings")]
-    public int groupMinSize = 10; // 인스펙터에서 수정 가능 (10칸부터 그룹)
+    public int groupMinSize = 9; // 인스펙터에서 수정 가능 (10칸부터 그룹)
 
     public List<GroupInfo> activeGroups = new List<GroupInfo>();
     private int nextGroupID = 1;

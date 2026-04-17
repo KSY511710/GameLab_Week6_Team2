@@ -30,7 +30,6 @@ public class ResourceManager : MonoBehaviour
     public TextMeshProUGUI dayText;
     public TextMeshProUGUI expandCostText;
     public TextMeshProUGUI goalText;
-    public TextMeshProUGUI DrawText;
 
     void Awake()
     {
@@ -129,13 +128,6 @@ public class ResourceManager : MonoBehaviour
             goalText.text = $"Goal: {nextGoalAmount} GWh (Day {nextGoalDay})";
         }
     }
-    private void UpdateDrawCost()
-    {
-        DrawText.text = $"Draw ({drawCost})";
-    }
-    public void AddDarwCost()
-    {
-        drawCost += darwSumCost;
-        UpdateDrawCost();
-    }
+ 
+    
 }

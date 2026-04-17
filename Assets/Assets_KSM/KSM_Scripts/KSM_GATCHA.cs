@@ -258,11 +258,11 @@ public class KSM_GATCHA : MonoBehaviour
     /// 일반 블록(Regular) 중 includeInBasicDraw == true 인 엔트리들만 대상으로 랜덤 선택한다.
     /// 현재 크기 필터가 켜져 있으면 그 크기만 뽑는다.
     /// </summary>
-    public void DrawBasicBlock()
+    public GatchaBlockEntry DrawBasicBlock()
     {
         int sizeFilter = GetCurrentSizeFilter();
 
-        TryDraw(
+        return TryDraw(
             entry => entry.poolType == BlockPoolType.Regular &&
                      entry.includeInBasicDraw &&
                      MatchesBlockSize(entry, sizeFilter),
@@ -275,11 +275,11 @@ public class KSM_GATCHA : MonoBehaviour
     /// 예: DrawBasicBlockBySize(2)
     /// </summary>
     /// <param name="blockSize">뽑고 싶은 블록 크기</param>
-    public void DrawBasicBlockBySize(int blockSize)
+    public GatchaBlockEntry DrawBasicBlockBySize(int blockSize)
     {
         int normalizedSize = NormalizeBlockSize(blockSize);
 
-        TryDraw(
+        return TryDraw(
             entry => entry.poolType == BlockPoolType.Regular &&
                      entry.includeInBasicDraw &&
                      MatchesBlockSize(entry, normalizedSize),
@@ -291,27 +291,27 @@ public class KSM_GATCHA : MonoBehaviour
     /// 빨강 색상 블록만 대상으로 뽑기한다.
     /// 현재 크기 필터가 켜져 있으면 그 크기만 뽑는다.
     /// </summary>
-    public void DrawRedTheme()
+    public GatchaBlockEntry DrawRedTheme()
     {
-        DrawByColor(BlockColorTheme.Red, GetCurrentSizeFilter());
+        return DrawByColor(BlockColorTheme.Red, GetCurrentSizeFilter());
     }
 
     /// <summary>
     /// 파랑 색상 블록만 대상으로 뽑기한다.
     /// 현재 크기 필터가 켜져 있으면 그 크기만 뽑는다.
     /// </summary>
-    public void DrawBlueTheme()
+    public GatchaBlockEntry DrawBlueTheme()
     {
-        DrawByColor(BlockColorTheme.Blue, GetCurrentSizeFilter());
+        return DrawByColor(BlockColorTheme.Blue, GetCurrentSizeFilter());
     }
 
     /// <summary>
     /// 노랑 색상 블록만 대상으로 뽑기한다.
     /// 현재 크기 필터가 켜져 있으면 그 크기만 뽑는다.
     /// </summary>
-    public void DrawYellowTheme()
+    public GatchaBlockEntry DrawYellowTheme()
     {
-        DrawByColor(BlockColorTheme.Yellow, GetCurrentSizeFilter());
+        return DrawByColor(BlockColorTheme.Yellow, GetCurrentSizeFilter());
     }
 
     /// <summary>
@@ -376,9 +376,9 @@ public class KSM_GATCHA : MonoBehaviour
     /// </summary>
     /// <param name="colorTheme">대상 색상 테마</param>
     /// <param name="blockSize">대상 블록 크기. 0 이하면 모든 크기 허용</param>
-    private void DrawByColor(BlockColorTheme colorTheme, int blockSize)
+    private GatchaBlockEntry DrawByColor(BlockColorTheme colorTheme, int blockSize)
     {
-        TryDraw(
+        return TryDraw(
             entry => entry.poolType == BlockPoolType.Regular &&
                      entry.colorTheme == colorTheme &&
                      MatchesBlockSize(entry, blockSize),
@@ -665,20 +665,24 @@ public class KSM_GATCHA : MonoBehaviour
 
         for (int size = 1; size <= 3; size++)
         {
-            AddRegularEntry($"{size}칸 빨강 화력 발전 블록", BlockColorTheme.Red, BlockGenerationTheme.Thermal, size);
-            AddRegularEntry($"{size}칸 빨강 수력 발전 블록", BlockColorTheme.Red, BlockGenerationTheme.Hydro, size);
-            AddRegularEntry($"{size}칸 빨강 태양광 발전 블록", BlockColorTheme.Red, BlockGenerationTheme.Solar, size);
+            AddRegularEntry($"{size}칸 빨강 블록", BlockColorTheme.Red, BlockGenerationTheme.None, size);
+            AddRegularEntry($"{size}칸 파랑 블록", BlockColorTheme.Blue, BlockGenerationTheme.None, size);
+            AddRegularEntry($"{size}칸 노랑 블록", BlockColorTheme.Yellow, BlockGenerationTheme.None, size);
+            //발전 속성 시스템 추가될시 넣기
+            //AddRegularEntry($"{size}칸 빨강 화력 발전 블록", BlockColorTheme.Red, BlockGenerationTheme.Thermal, size);
+            //AddRegularEntry($"{size}칸 빨강 수력 발전 블록", BlockColorTheme.Red, BlockGenerationTheme.Hydro, size);
+            //AddRegularEntry($"{size}칸 빨강 태양광 발전 블록", BlockColorTheme.Red, BlockGenerationTheme.Solar, size);
 
-            AddRegularEntry($"{size}칸 파랑 화력 발전 블록", BlockColorTheme.Blue, BlockGenerationTheme.Thermal, size);
-            AddRegularEntry($"{size}칸 파랑 수력 발전 블록", BlockColorTheme.Blue, BlockGenerationTheme.Hydro, size);
-            AddRegularEntry($"{size}칸 파랑 태양광 발전 블록", BlockColorTheme.Blue, BlockGenerationTheme.Solar, size);
+            //AddRegularEntry($"{size}칸 파랑 화력 발전 블록", BlockColorTheme.Blue, BlockGenerationTheme.Thermal, size);
+            //AddRegularEntry($"{size}칸 파랑 수력 발전 블록", BlockColorTheme.Blue, BlockGenerationTheme.Hydro, size);
+            //AddRegularEntry($"{size}칸 파랑 태양광 발전 블록", BlockColorTheme.Blue, BlockGenerationTheme.Solar, size);
 
-            AddRegularEntry($"{size}칸 노랑 화력 발전 블록", BlockColorTheme.Yellow, BlockGenerationTheme.Thermal, size);
-            AddRegularEntry($"{size}칸 노랑 수력 발전 블록", BlockColorTheme.Yellow, BlockGenerationTheme.Hydro, size);
-            AddRegularEntry($"{size}칸 노랑 태양광 발전 블록", BlockColorTheme.Yellow, BlockGenerationTheme.Solar, size);
+            //AddRegularEntry($"{size}칸 노랑 화력 발전 블록", BlockColorTheme.Yellow, BlockGenerationTheme.Thermal, size);
+            //AddRegularEntry($"{size}칸 노랑 수력 발전 블록", BlockColorTheme.Yellow, BlockGenerationTheme.Hydro, size);
+            //AddRegularEntry($"{size}칸 노랑 태양광 발전 블록", BlockColorTheme.Yellow, BlockGenerationTheme.Solar, size);
 
-            AddDevelopmentEntry($"{size}칸 구름 생성 블록", BlockDevelopmentType.CloudCreate, size);
-            AddDevelopmentEntry($"{size}칸 구름 제거 블록", BlockDevelopmentType.CloudRemove, size);
+            //AddDevelopmentEntry($"{size}칸 구름 생성 블록", BlockDevelopmentType.CloudCreate, size);
+            //AddDevelopmentEntry($"{size}칸 구름 제거 블록", BlockDevelopmentType.CloudRemove, size);
         }
 
         Debug.Log($"[KSM_GATCHA] 기본 가챠 데이터 {blockEntries.Count}개를 자동 생성했습니다.");

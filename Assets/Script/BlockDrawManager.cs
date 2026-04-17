@@ -17,7 +17,7 @@ public class BlockDrawManager : MonoBehaviour
 
             // 2. 해당 블록의 개수(Count)를 +1 증가
             inventoryBlocks[randomIndex].AddBlock();
-            ResourceManager.Instance.AddDarwCost();
+            
 
             Debug.Log($"<color=cyan>뽑기 성공!</color> {randomIndex + 1}번째 인벤토리 블록 획득!");
         }
