@@ -28,7 +28,7 @@ public static class FormationDetector
             return 2;
         }
 
-        return 1; // 아무 모양도 아니면 기본 1배
+        return 0; // 아무 모양도 아니면 기본 1배
     }
 
     // =========================================================
