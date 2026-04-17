@@ -152,3 +152,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlacedBlockVisual
   blankSprite: {fileID: 7482667652216324306, guid: 806e26482a9dd8840bbc3a93a26d78dd, type: 3}
+  outlineColor: {r: 0, g: 0, b: 0, a: 1}
+  outlineThickness: 0.05
+  outlineMaterial: {fileID: 0}

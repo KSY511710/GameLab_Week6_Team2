@@ -97,6 +97,7 @@ public class GridManager : MonoBehaviour
         {
             PowerManager.Instance.CheckAndFormGroups(boardData, width, height);
             PowerManager.Instance.CalculateTotalPower(boardData, width, height);
+            PowerManager.Instance.UpdateAllOutlines(boardData, width, height);
         }
     }
 

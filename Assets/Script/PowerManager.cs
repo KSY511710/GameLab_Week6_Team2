@@ -255,4 +255,32 @@ public class PowerManager : MonoBehaviour
     {
         return totalPower;
     }
+    public void UpdateAllOutlines(BlockData[,] board, int width, int height)
+    {
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                BlockData myData = board[x, y];
+
+                // 블록이 없거나 연결된 실제 오브젝트가 없으면 패스!
+                if (myData == null || myData.blockObject == null) continue;
+
+                PlacedBlockVisual visual = myData.blockObject.GetComponent<PlacedBlockVisual>();
+                if (visual == null) continue;
+
+                // 내 그룹 번호 기억 (그룹이 없으면 0으로 취급)
+                int myGroupID = myData.isGrouped ? myData.groupID : 0;
+
+                // 4방향 이웃 검사! (배열 범위를 벗어나거나, 비어있거나, 나랑 그룹ID가 다르면 선을 켬)
+                bool showTop = (y + 1 >= height) || (board[x, y + 1] == null) || (board[x, y + 1].groupID != myGroupID);
+                bool showBottom = (y - 1 < 0) || (board[x, y - 1] == null) || (board[x, y - 1].groupID != myGroupID);
+                bool showLeft = (x - 1 < 0) || (board[x - 1, y] == null) || (board[x - 1, y].groupID != myGroupID);
+                bool showRight = (x + 1 >= width) || (board[x + 1, y] == null) || (board[x + 1, y].groupID != myGroupID);
+
+                // 시각 컨트롤러에게 선을 켜고 끄라고 명령 전달
+                visual.UpdateOutline(showTop, showBottom, showLeft, showRight);
+            }
+        }
+    }
 }
