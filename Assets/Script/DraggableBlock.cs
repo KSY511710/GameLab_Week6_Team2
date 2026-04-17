@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
@@ -9,6 +9,7 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
     [Header("Block Attributes")]
     public KSM_GATCHA.CompanyColor companyColor = KSM_GATCHA.CompanyColor.Red;
     public KSM_GATCHA.BlockSymbolType symbolType = KSM_GATCHA.BlockSymbolType.Symbol01;
+    [Range(1, 3)] public int blockSize = 1;
 
     public GameObject blockPrefab;
 
@@ -33,7 +34,16 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
     private GameObject previewGhost;
     private SpriteRenderer[] ghostRenderers;
     private Vector3Int lastCellPos;
+    private void OnEnable()
+    {
+        GachaConnector.OnBlockDrawn += CheckAndAddBlock;
+        Debug.Log("구독성공");
+    }
 
+    private void OnDisable()
+    {
+        GachaConnector.OnBlockDrawn -= CheckAndAddBlock;
+    }
     void Start()
     {
         gridManager = Object.FindAnyObjectByType<GridManager>();
@@ -81,8 +91,19 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
     {
         if (countText != null) countText.text = $"x {blockCount}";
 
-        if (blockCount > 0) img.color = new Color(1f, 1f, 1f, 1f);
-        else img.color = new Color(1f, 1f, 1f, 0.5f);
+        Color currentColor = img.color;
+
+        if (blockCount > 0)
+        {
+            currentColor.a = 1f;
+        }
+        else
+        {
+            currentColor.a = 0.5f;
+        }
+
+        // 3. 투명도만 바뀐 색상을 다시 이미지에 쏙 넣습니다.
+        img.color = currentColor;
     }
 
     public void OnBeginDrag(PointerEventData eventData)
@@ -171,5 +192,16 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
         shapeCoords = (Vector2Int[])originalShape.Clone();
         transform.rotation = originalRotation;
         transform.position = startPos;
+    }
+    private void CheckAndAddBlock(KSM_GATCHA.CompanyColor drawnCompany, KSM_GATCHA.BlockSymbolType drawnSymbol, int drawnSize)
+    {
+        // SO 대신 내 스크립트에 있는 변수들과 직접 비교합니다!
+        if (this.companyColor == drawnCompany &&
+            this.symbolType == drawnSymbol &&
+            this.blockSize == drawnSize)
+        {
+            // 색상, 기호, 크기가 모두 일치하면 개수 증가!
+            AddBlock();
+        }
     }
 }

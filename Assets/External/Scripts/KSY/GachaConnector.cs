@@ -1,6 +1,7 @@
+using System;
 using System.Collections.Generic;
-using UnityEngine;
 using TMPro;
+using UnityEngine;
 
 // 📌 가챠 결과(회사, 부품, 크기)와 실제 UI 인벤토리(DraggableBlock)를 짝지어주는 데이터 구조
 [System.Serializable]
@@ -17,14 +18,14 @@ public class GachaConnector : MonoBehaviour
     [Header("연결할 시스템")]
     public KSM_GATCHA gachaSystem;
 
-    [Header("인벤토리 매핑 (인스펙터에서 연결)")]
-    public List<InventorySlotMapping> slotMappings = new List<InventorySlotMapping>();
     [Header("드롭다운 UI 연결")]
     public TMP_Dropdown companyDropdown; // 유니티에서 기업 선택 드롭다운 연결
     public TMP_Dropdown partDropdown;    // 유니티에서 부품 선택 드롭다운 연결
 
     [Header("상점 패널")]
     public GameObject Shop;
+
+    public static event Action<KSM_GATCHA.CompanyColor, KSM_GATCHA.BlockSymbolType, int> OnBlockDrawn;
     public void OnClickCompanyDrawFromDropdown()
     {
         if (gachaSystem == null || companyDropdown == null) return;
@@ -36,7 +37,7 @@ public class GachaConnector : MonoBehaviour
         gachaSystem.SetSelectedCompanyByIndex(selectedIndex);
         KSM_GATCHA.GatchaBlockEntry result = gachaSystem.DrawCompanyBlock();
 
-        if (result != null) AddBlockToInventory(result);
+        if (result != null) BroadcastDrawResult(result);
     }
 
     public void OnClickPartDrawFromDropdown()
@@ -49,7 +50,7 @@ public class GachaConnector : MonoBehaviour
         gachaSystem.SetSelectedPartSymbol(selectedIndex);
         KSM_GATCHA.GatchaBlockEntry result = gachaSystem.DrawPartBlock();
 
-        if (result != null) AddBlockToInventory(result);
+        if (result != null) BroadcastDrawResult(result);
     }
 
     // ==========================================
@@ -60,7 +61,7 @@ public class GachaConnector : MonoBehaviour
         if (gachaSystem == null) return;
 
         KSM_GATCHA.GatchaBlockEntry result = gachaSystem.DrawGeneralBlock();
-        if (result != null) AddBlockToInventory(result);
+        if (result != null) BroadcastDrawResult(result);
     }
 
     // ==========================================
@@ -77,7 +78,7 @@ public class GachaConnector : MonoBehaviour
         // 2. 기업 확정 뽑기 레버를 당깁니다!
         KSM_GATCHA.GatchaBlockEntry result = gachaSystem.DrawCompanyBlock();
 
-        if (result != null) AddBlockToInventory(result);
+        if (result != null) BroadcastDrawResult(result);
     }
 
     // ==========================================
@@ -94,7 +95,7 @@ public class GachaConnector : MonoBehaviour
         // 2. 부품 확정 뽑기 레버를 당깁니다!
         KSM_GATCHA.GatchaBlockEntry result = gachaSystem.DrawPartBlock();
 
-        if (result != null) AddBlockToInventory(result);
+        if (result != null) BroadcastDrawResult(result);
     }
 
     // ==========================================
@@ -105,32 +106,12 @@ public class GachaConnector : MonoBehaviour
         if (Shop == null) return;
         Shop.SetActive(ShopState);
     }
-
-    // ==========================================
-    // 📦 인벤토리에 블록 추가 (핵심 매핑)
-    // ==========================================
-    private void AddBlockToInventory(KSM_GATCHA.GatchaBlockEntry entry)
+    private void BroadcastDrawResult(KSM_GATCHA.GatchaBlockEntry entry)
     {
-        foreach (var slot in slotMappings)
-        {
-            // 🌟 색상(회사), 부품(기호), 크기 3가지가 모두 똑같은 슬롯을 찾습니다!
-            if (slot.gachaCompany == entry.companyColor &&
-                slot.gachaSymbol == entry.symbolType &&
-                slot.gachaSize == entry.blockSize)
-            {
-                if (slot.targetUIBlock != null)
-                {
-                    slot.targetUIBlock.AddBlock(); // 인벤토리 숫자 증가!
-                    Debug.Log($"✅ 인벤토리 지급 완료: [{entry.companyColor} / {entry.symbolType} / {entry.blockSize}칸]");
-                }
-                else
-                {
-                    Debug.LogWarning("⚠️ 매핑은 찾았지만 연결된 타겟 UI 블록이 없습니다!");
-                }
-                return;
-            }
-        }
+        Debug.Log($"📢 [방송] 가챠 당첨! : {entry.companyColor} / {entry.symbolType} / {entry.blockSize}칸");
 
-        Debug.LogWarning("⚠️ 해당하는 인벤토리 슬롯을 찾지 못했습니다. 인스펙터 매핑을 확인하세요.");
+        // 확성기에 구독자(듣고 있는 블록)가 있다면 결과를 쏴줍니다!
+        OnBlockDrawn?.Invoke(entry.companyColor, entry.symbolType, entry.blockSize);
     }
+
 }
