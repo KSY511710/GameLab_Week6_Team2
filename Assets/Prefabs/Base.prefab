@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: -7408791866951712733}
   - component: {fileID: -828019113167972480}
   m_Layer: 0
-  m_Name: ElecR3
+  m_Name: Base
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -83,7 +83,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 1
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 8114233130347475196, guid: 57d5529df9bd3ed4c9b1c22c1b7dd65f, type: 3}
+  m_Sprite: {fileID: -1698693315224298403, guid: d6407e0f3b133464eb3f4dba87ba4779, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -131,7 +131,7 @@ BoxCollider2D:
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 8, y: 8.16}
+    oldSize: {x: 1, y: 1.02}
     newSize: {x: 1, y: 1}
     adaptiveTilingThreshold: 0.5
     drawMode: 0

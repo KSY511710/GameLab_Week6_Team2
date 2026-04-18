@@ -514,51 +514,51 @@ public class GridManager : MonoBehaviour
     /// <returns>배치 가능하면 true</returns>
     public bool CanPlaceShape(Vector3Int startCell, Vector2Int[] shapeCoords)
     {
-        // Next Day 시퀀스 진행 중이면 placement-eligibility 자체를 거부 (블럭 소진 방지)
-        if (PowerManager.Instance != null && PowerManager.Instance.IsAnimating) return false;
+       // Next Day 시퀀스 진행 중이면 placement-eligibility 자체를 거부 (블럭 소진 방지)
+    if (PowerManager.Instance != null && PowerManager.Instance.IsAnimating) return false;
 
-        // 🌟 8방향(상하좌우 + 대각선) 검사를 위한 방향 배열
-        Vector2Int[] directions = {
+    // 🌟 8방향(상하좌우 + 대각선) 검사를 위한 방향 배열
+    Vector2Int[] directions = { 
         Vector2Int.up, Vector2Int.down, Vector2Int.left, Vector2Int.right,
         new Vector2Int(1, 1), new Vector2Int(1, -1),
         new Vector2Int(-1, 1), new Vector2Int(-1, -1)
     };
 
-        foreach (var offset in shapeCoords)
+    foreach (var offset in shapeCoords)
+    {
+        Vector2Int arrayIdx = TileToArrayIndex(startCell.x + offset.x, startCell.y + offset.y);
+
+        // 1. 격자 밖으로 나가는지 검사
+        if (arrayIdx.x < 0 || arrayIdx.x >= width || arrayIdx.y < 0 || arrayIdx.y >= height) return false;
+
+        // 2. 놓으려는 자리에 이미 블럭이 있는지 검사
+        if (boardData[arrayIdx.x, arrayIdx.y] != null && boardData[arrayIdx.x, arrayIdx.y].attribute.colorID > 0) return false;
+
+        // 🌟 3. 주변 8방향에 '완성된 발전소'가 있는지 검사
+        foreach (Vector2Int dir in directions)
         {
-            Vector2Int arrayIdx = TileToArrayIndex(startCell.x + offset.x, startCell.y + offset.y);
+            // 방금 구한 arrayIdx(배열 인덱스)를 기준으로 주변 칸 탐색
+            int neighborX = arrayIdx.x + dir.x;
+            int neighborY = arrayIdx.y + dir.y;
 
-            // 1. 격자 밖으로 나가는지 검사
-            if (arrayIdx.x < 0 || arrayIdx.x >= width || arrayIdx.y < 0 || arrayIdx.y >= height) return false;
-
-            // 2. 놓으려는 자리에 이미 블럭이 있는지 검사
-            if (boardData[arrayIdx.x, arrayIdx.y] != null && boardData[arrayIdx.x, arrayIdx.y].attribute.colorID > 0) return false;
-
-            // 🌟 3. 주변 8방향에 '완성된 발전소'가 있는지 검사
-            foreach (Vector2Int dir in directions)
+            // 이웃 칸이 배열 범위 안에 있는지 안전 검사
+            if (neighborX >= 0 && neighborX < width && neighborY >= 0 && neighborY < height)
             {
-                // 방금 구한 arrayIdx(배열 인덱스)를 기준으로 주변 칸 탐색
-                int neighborX = arrayIdx.x + dir.x;
-                int neighborY = arrayIdx.y + dir.y;
+                BlockData neighborCell = boardData[neighborX, neighborY];
 
-                // 이웃 칸이 배열 범위 안에 있는지 안전 검사
-                if (neighborX >= 0 && neighborX < width && neighborY >= 0 && neighborY < height)
+                // 이웃 칸에 블럭이 있고, 그 블럭이 그룹(isGrouped)에 속해 있다면 설치 불가!
+                if (neighborCell != null && neighborCell.isGrouped)
                 {
-                    BlockData neighborCell = boardData[neighborX, neighborY];
-
-                    // 이웃 칸에 블럭이 있고, 그 블럭이 그룹(isGrouped)에 속해 있다면 설치 불가!
-                    if (neighborCell != null && neighborCell.isGrouped)
-                    {
-                        // (선택) 디버그 로그가 필요하시면 아래 주석을 푸세요
-                        // Debug.Log($"<color=red>설치 불가:</color> ({neighborX}, {neighborY}) 위치의 기존 발전소와 인접해 있습니다.");
-                        return false;
-                    }
+                    // (선택) 디버그 로그가 필요하시면 아래 주석을 푸세요
+                    // Debug.Log($"<color=red>설치 불가:</color> ({neighborX}, {neighborY}) 위치의 기존 발전소와 인접해 있습니다.");
+                    return false; 
                 }
             }
         }
-
-        // 모든 조건을 무사히 통과하면 설치 허락!
-        return true;
+    }
+    
+    // 모든 조건을 무사히 통과하면 설치 허락!
+    return true;
     }
 
     /// <summary>

@@ -370,34 +370,41 @@ public class PowerManager : MonoBehaviour
     }
     public void ProceedToNextDay()
     {
-        if (IsAnimating)
+        if (IsAnimating) return;
+
+        SettlementData data = new SettlementData();
+        data.totalMoneyCap = ResourceManager.Instance != null ? ResourceManager.Instance.RemainingExchangeCap : 100f;
+
+        // 1. 빨/파/초 그룹 생산량 합산
+        foreach (GroupInfo group in activeGroups)
         {
-            Debug.LogWarning("애니메이션 재생 중입니다! 잠시 후 눌러주세요.");
-            return;
+            if (group.finalColor == 1) { data.redPower += group.groupPower; data.redMoney += group.estimatedMoneyGen; }
+            else if (group.finalColor == 2) { data.bluePower += group.groupPower; data.blueMoney += group.estimatedMoneyGen; }
+            else if (group.finalColor == 3) { data.greenPower += group.groupPower; data.greenMoney += group.estimatedMoneyGen; }
         }
 
-        if (PowerAnimationSequencer.Instance != null)
+        // 🌟 2. 자투리(Scrap) 생산량 및 예상 수익 계산
+        // 전체 전력에서 그룹이 생산한 전력을 모두 빼면 자투리 전력이 남습니다.
+        data.scrapPower = totalPower - (data.redPower + data.bluePower + data.greenPower);
+
+        // 자투리 전력은 특별 우대 환율 없이 '기본 환율'로만 돈으로 바뀝니다.
+        float baseRatio = ResourceManager.Instance != null ? ResourceManager.Instance.ExchangeRatio : 10f;
+        data.scrapMoney = data.scrapPower / baseRatio;
+
+        // 3. 애니메이션 재생
+        if (SettlementUIController.Instance != null)
         {
-            // 🌟 시퀀서에게 "영수증 연출 쫙 보여줘! 그리고 다 끝나면() 안의 명령을 실행해!" 라고 넘깁니다.
-            PowerAnimationSequencer.Instance.PlayDayEndSequence(
-                activeGroups,
-                LastUngroupedCount,
-                totalPower,
-                () =>
-                {
-                    // 이 안의 코드는 영수증 연출이 다~ 끝나고 화면이 닫힌 뒤에 실행됩니다.
-                    CommitYesterdayProduction(totalPower);
-                    if (ResourceManager.Instance != null)
-                    {
-                        ResourceManager.Instance.ProcessNextDay();
-                        Debug.Log($"🌙 정산 완료! 다음 날이 시작됩니다. (어제 발전량: {totalPower} GWh)");
-                    }
-                }
-            );
+            SetAnimating(true);
+
+            SettlementUIController.Instance.PlaySettlementAnimation(data, () =>
+            {
+                CommitYesterdayProduction(totalPower);
+                if (ResourceManager.Instance != null) ResourceManager.Instance.ProcessNextDay();
+                SetAnimating(false);
+            });
         }
         else
         {
-            // 혹시 시퀀서가 씬에 없을 경우를 대비한 안전 장치 (바로 넘김)
             CommitYesterdayProduction(totalPower);
             if (ResourceManager.Instance != null) ResourceManager.Instance.ProcessNextDay();
         }
