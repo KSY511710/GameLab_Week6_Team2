@@ -64,6 +64,7 @@ public class PowerManager : MonoBehaviour
 
     [Header("Group Settings")]
     public int groupMinSize = 9; // 인스펙터에서 수정 가능 (10칸부터 그룹)
+    public int groupMinpart = 3;
 
     public List<GroupInfo> activeGroups = new List<GroupInfo>();
     private int nextGroupID = 1;
@@ -124,7 +125,7 @@ public class PowerManager : MonoBehaviour
                         }
 
                         // 3. 서로 다른 종류의 부품이 3종류 이상 포함되어 있을 때만 그룹 확정(Lock)!
-                        if (uniqueParts.Count >= 3)
+                        if (uniqueParts.Count >= groupMinpart)
                         {
                             CreateNewGroup(cluster, board);
                         }
