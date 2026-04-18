@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Special.Runtime;
 using UnityEngine;
 
@@ -27,9 +28,22 @@ namespace Special.Effects.Assets
 
         public override void Deactivate(SpecialBlockInstance owner, EffectRuntime runtime) { /* UnhookAll 이 정리 */ }
 
+        public override EffectPreview BuildPreview(SpecialBlockInstance owner)
+        {
+            EffectPreview preview = base.BuildPreview(owner);
+            int plants = CountPlantsInScope(owner);
+            int bonus = plants * amountPerPlant;
+
+            preview.steps.Add($"<size=20>· 범위 내 발전소 : <color=#FFE066>{plants} 개</color></size>");
+            preview.steps.Add($"<size=20>· 가산량 : {plants} × {amountPerPlant} = <color=#FFE066>+{bonus}</color> 기본생산</size>");
+
+            preview.impactCells = CollectAffectedClusterCells(owner);
+            return preview;
+        }
+
         private GroupInfo BuildTransientGroupInfo(PowerCalculationContext ctx)
         {
-            return new GroupInfo { clusterPositions = new System.Collections.Generic.List<Vector2Int>(ctx.ClusterPositions) };
+            return new GroupInfo { clusterPositions = new List<Vector2Int>(ctx.ClusterPositions) };
         }
 
         private int CountPlantsInScope(SpecialBlockInstance owner)
@@ -41,6 +55,19 @@ namespace Special.Effects.Assets
                 if (ScopeEvaluator.GroupMatches(owner, scope, rangeInCells, g)) count++;
             }
             return count;
+        }
+
+        private List<Vector2Int> CollectAffectedClusterCells(SpecialBlockInstance owner)
+        {
+            List<Vector2Int> cells = new List<Vector2Int>();
+            if (PowerManager.Instance == null) return cells;
+            foreach (GroupInfo g in PowerManager.Instance.activeGroups)
+            {
+                if (!ScopeEvaluator.GroupMatches(owner, scope, rangeInCells, g)) continue;
+                if (g.clusterPositions == null) continue;
+                cells.AddRange(g.clusterPositions);
+            }
+            return cells;
         }
     }
 }

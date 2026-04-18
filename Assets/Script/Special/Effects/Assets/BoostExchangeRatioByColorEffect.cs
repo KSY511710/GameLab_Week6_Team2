@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Special.Runtime;
 using UnityEngine;
 
@@ -21,7 +22,7 @@ namespace Special.Effects.Assets
             {
                 if (PowerManager.Instance == null) return;
 
-                GroupInfo probe = new GroupInfo { clusterPositions = new System.Collections.Generic.List<Vector2Int>(ctx.ClusterPositions) };
+                GroupInfo probe = new GroupInfo { clusterPositions = new List<Vector2Int>(ctx.ClusterPositions) };
                 if (!ScopeEvaluator.GroupInZone(owner, probe)) return;
 
                 if (!IsColorDominantInZone(owner)) return;
@@ -34,6 +35,41 @@ namespace Special.Effects.Assets
         }
 
         public override void Deactivate(SpecialBlockInstance owner, EffectRuntime runtime) { }
+
+        public override EffectPreview BuildPreview(SpecialBlockInstance owner)
+        {
+            EffectPreview preview = base.BuildPreview(owner);
+
+            int total = 0;
+            int match = 0;
+            List<Vector2Int> impact = new List<Vector2Int>();
+            if (PowerManager.Instance != null)
+            {
+                foreach (GroupInfo g in PowerManager.Instance.activeGroups)
+                {
+                    if (!ScopeEvaluator.GroupInZone(owner, g)) continue;
+                    total++;
+                    if (g.finalColor == targetColorID)
+                    {
+                        match++;
+                        if (g.clusterPositions != null) impact.AddRange(g.clusterPositions);
+                    }
+                }
+            }
+
+            float ratio = total > 0 ? (float)match / total : 0f;
+            bool active = ratio >= threshold;
+            string colorName = ColorIdToName(targetColorID);
+
+            preview.steps.Add($"<size=20>· 같은 구역 내 발전소 : {total} 개 (그 중 {colorName} {match} 개)</size>");
+            preview.steps.Add($"<size=20>· 점유율 : <color=#FFE066>{ratio * 100f:F0}%</color> / 기준 {threshold * 100f:F0}%</size>");
+            preview.steps.Add(active
+                ? $"<size=20>→ 조건 충족, {colorName} 발전소 출력에 <color=#FFE066>x{multiplier:F2}</color> 적용 대기</size>"
+                : $"<size=20>→ 조건 미달, 효과 대기 중</size>");
+
+            preview.impactCells = impact;
+            return preview;
+        }
 
         private bool IsColorDominantInZone(SpecialBlockInstance owner)
         {
@@ -49,11 +85,11 @@ namespace Special.Effects.Assets
             return (float)match / total >= threshold;
         }
 
-        private int DominantColorOfCluster(System.Collections.Generic.IReadOnlyList<Vector2Int> cluster)
+        private int DominantColorOfCluster(IReadOnlyList<Vector2Int> cluster)
         {
             GridManager grid = Object.FindFirstObjectByType<GridManager>();
             if (grid == null) return 0;
-            System.Collections.Generic.Dictionary<int, int> counts = new System.Collections.Generic.Dictionary<int, int>();
+            Dictionary<int, int> counts = new Dictionary<int, int>();
             for (int i = 0; i < cluster.Count; i++)
             {
                 BlockData cell = grid.GetBlockAtArrayIndex(cluster[i]);
@@ -64,6 +100,17 @@ namespace Special.Effects.Assets
             int dom = 0, domC = -1;
             foreach (var kv in counts) if (kv.Value > domC) { dom = kv.Key; domC = kv.Value; }
             return dom;
+        }
+
+        private static string ColorIdToName(int id)
+        {
+            switch (id)
+            {
+                case 1: return "<color=#FF6666>빨</color>";
+                case 2: return "<color=#6699FF>파</color>";
+                case 3: return "<color=#66CC66>노</color>";
+                default: return "?";
+            }
         }
     }
 }

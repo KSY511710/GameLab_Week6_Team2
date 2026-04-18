@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Special.Runtime;
 using UnityEngine;
 
@@ -20,12 +21,7 @@ namespace Special.Effects.Assets
                 GridManager grid = Object.FindFirstObjectByType<GridManager>();
                 if (grid == null || ResourceManager.Instance == null) return;
 
-                int emptyCount = 0;
-                foreach (Vector2Int cell in ScopeEvaluator.CellsInRange(owner, rangeInCells, grid.width, grid.height))
-                {
-                    if (owner.FootprintContains(cell)) continue;
-                    if (grid.IsEmptyCell(cell)) emptyCount++;
-                }
+                int emptyCount = CountEmptyCells(owner, grid);
 
                 int bonus = emptyCount * perEmptyCell;
                 if (bonus > 0)
@@ -37,5 +33,43 @@ namespace Special.Effects.Assets
         }
 
         public override void Deactivate(SpecialBlockInstance owner, EffectRuntime runtime) { }
+
+        public override EffectPreview BuildPreview(SpecialBlockInstance owner)
+        {
+            EffectPreview preview = base.BuildPreview(owner);
+
+            GridManager grid = Object.FindFirstObjectByType<GridManager>();
+            int emptyCount = grid != null ? CountEmptyCells(owner, grid) : 0;
+            int bonus = emptyCount * perEmptyCell;
+
+            preview.steps.Add($"<size=20>· 범위 내 빈칸 : <color=#A0E0FF>{emptyCount} 칸</color></size>");
+            preview.steps.Add($"<size=20>· 일일 보너스 : {emptyCount} × {perEmptyCell} = <color=#FFE066>+{bonus}</color> 전력</size>");
+
+            preview.impactCells = CollectEmptyCells(owner, grid);
+            return preview;
+        }
+
+        private int CountEmptyCells(SpecialBlockInstance owner, GridManager grid)
+        {
+            int count = 0;
+            foreach (Vector2Int cell in ScopeEvaluator.CellsInRange(owner, rangeInCells, grid.width, grid.height))
+            {
+                if (owner.FootprintContains(cell)) continue;
+                if (grid.IsEmptyCell(cell)) count++;
+            }
+            return count;
+        }
+
+        private List<Vector2Int> CollectEmptyCells(SpecialBlockInstance owner, GridManager grid)
+        {
+            List<Vector2Int> cells = new List<Vector2Int>();
+            if (grid == null) return cells;
+            foreach (Vector2Int cell in ScopeEvaluator.CellsInRange(owner, rangeInCells, grid.width, grid.height))
+            {
+                if (owner.FootprintContains(cell)) continue;
+                if (grid.IsEmptyCell(cell)) cells.Add(cell);
+            }
+            return cells;
+        }
     }
 }

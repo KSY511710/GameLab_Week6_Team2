@@ -306,6 +306,20 @@ public class GridManager : MonoBehaviour
     }
 
     /// <summary>
+    /// 배열 인덱스(0..W-1, 0..H-1)를 월드 셀 중심 좌표로 변환한다.
+    /// 특수 블럭 시각화 모듈(영역 오버레이 등) 이 보드 내부 오프셋을 모르고도
+    /// 월드 좌표를 받을 수 있도록 노출한 헬퍼.
+    /// </summary>
+    /// <param name="arrayIdx">배열 인덱스</param>
+    /// <returns>월드 좌표상의 셀 중심</returns>
+    public Vector3 ArrayIndexToWorldCenter(Vector2Int arrayIdx)
+    {
+        if (groundTilemap == null) return Vector3.zero;
+        Vector3Int worldCell = new Vector3Int(arrayIdx.x + currentOffset.x, arrayIdx.y + currentOffset.y, 0);
+        return groundTilemap.GetCellCenterWorld(worldCell);
+    }
+
+    /// <summary>
     /// sourceRegion의 인접 방향에 있는 targetRegion을 계산한다.
     /// </summary>
     /// <param name="sourceRegion">기준 구역</param>
