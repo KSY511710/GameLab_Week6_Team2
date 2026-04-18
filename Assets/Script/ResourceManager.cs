@@ -11,6 +11,12 @@ public enum CurrencyType
     Ticket
 }
 
+public enum DrawKind
+{
+    Basic,
+    Theme
+}
+
 public class ResourceManager : MonoBehaviour
 {
     public static ResourceManager Instance;
@@ -116,6 +122,8 @@ public class ResourceManager : MonoBehaviour
     public static event Action<int> OnSessionAdvanced;
     public static event Action<bool> OnSkipAvailability;
     public static event Action OnGameOver;
+    /// <summary>뽑기 비용이 바뀐 시점에 발화 (세션 진입, 뽑기 사용 직후 등). 상점 라벨이 구독.</summary>
+    public static event Action OnDrawCostChanged;
 
     // ==========================================================
     //   Public Properties
@@ -154,6 +162,23 @@ public class ResourceManager : MonoBehaviour
 
         ClampCurveWrapModes();
         InitializeWallet();
+
+        // PowerManager의 라이브 발전량 변화에 따라 Skip 가용성 재평가
+        PowerManager.OnTotalPowerChanged += HandleTotalPowerChanged;
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this)
+        {
+            PowerManager.OnTotalPowerChanged -= HandleTotalPowerChanged;
+            Instance = null;
+        }
+    }
+
+    private void HandleTotalPowerChanged()
+    {
+        RaiseSkipAvailabilityIfChanged();
     }
 
     private void Start()
@@ -163,6 +188,7 @@ public class ResourceManager : MonoBehaviour
         EmitAllCurrencyEvents();
         RaiseDayEvent();
         RaiseSkipAvailabilityIfChanged();
+        OnDrawCostChanged?.Invoke();
     }
 
     private void ClampCurveWrapModes()
@@ -281,7 +307,12 @@ public class ResourceManager : MonoBehaviour
 
     public bool CanSkip()
     {
-        return !gameOver && currentDDay > 0 && todayProduction >= dailyProductionGoal;
+        if (gameOver || currentDDay <= 0) return false;
+        // 시퀀스(Next Day 애니메이션) 진행 중에는 Skip 차단
+        if (PowerManager.Instance != null && PowerManager.Instance.IsAnimating) return false;
+        // 정산 전이라도 현재 보드에서 일일 목표를 충족하면 Skip 허용
+        int liveProduction = PowerManager.Instance != null ? PowerManager.Instance.GetTotalPower() : 0;
+        return liveProduction >= dailyProductionGoal;
     }
 
     public bool TrySkip()
@@ -340,6 +371,8 @@ public class ResourceManager : MonoBehaviour
 
         OnSessionAdvanced?.Invoke(sessionIndex);
         RaiseDayEvent();
+        // 세션 진입 시 baseCost와 사용 카운터가 모두 바뀌므로 라벨 갱신 신호
+        OnDrawCostChanged?.Invoke();
     }
 
     // ==========================================================
@@ -387,6 +420,12 @@ public class ResourceManager : MonoBehaviour
         return Mathf.Max(0, Mathf.RoundToInt(baseCost * multiplier));
     }
 
+    /// <summary>UI 라벨이 종류별 가격을 한 메서드로 조회할 수 있도록 분기.</summary>
+    public int GetDrawCost(DrawKind kind)
+    {
+        return kind == DrawKind.Basic ? GetBasicDrawCost() : GetThemeDrawCost();
+    }
+
     public bool TryPayForExpand()
     {
         int cost = GetExpandCost();
@@ -404,6 +443,7 @@ public class ResourceManager : MonoBehaviour
 
         basicDrawCountThisSession++;
         UpdateUI();
+        OnDrawCostChanged?.Invoke();
         return true;
     }
 
@@ -414,6 +454,7 @@ public class ResourceManager : MonoBehaviour
 
         themeDrawCountThisSession++;
         UpdateUI();
+        OnDrawCostChanged?.Invoke();
         return true;
     }
 

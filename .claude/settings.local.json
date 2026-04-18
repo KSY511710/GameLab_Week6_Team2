@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs grep *)",
+      "Bash(find \"/c/Users/jungle/Documents/GitHub/GameLab_Week6_Team2/Assets/Scenes\" -name \"*.unity\" -type f -exec grep -l \"Button\\\\|Canvas\" {} \\\\;)"
+    ]
+  }
+}

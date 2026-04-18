@@ -53,6 +53,9 @@ public class GridManager : MonoBehaviour
 
     public bool CanPlaceShape(Vector3Int startCell, Vector2Int[] shapeCoords)
     {
+        // Next Day 시퀀스 진행 중이면 placement-eligibility 자체를 거부 (블럭 소진 방지)
+        if (PowerManager.Instance != null && PowerManager.Instance.IsAnimating) return false;
+
         foreach (var offset in shapeCoords)
         {
             Vector2Int arrayIdx = TileToArrayIndex(startCell.x + offset.x, startCell.y + offset.y);
@@ -68,6 +71,9 @@ public class GridManager : MonoBehaviour
     // 📌 colorID와 shapeID를 모두 받아서 저장합니다.
     public void PlaceShape(Vector3Int startCell, Vector2Int[] shapeCoords, int colorID, int shapeID, GameObject prefab)
     {
+        // Next Day 시퀀스 진행 중에는 보드를 변경하지 않는다 (PowerManager.activeGroups 일관성 보장).
+        if (PowerManager.Instance != null && PowerManager.Instance.IsAnimating) return;
+
         GameObject buildingParent = new GameObject("MultiCell_Building");
         buildingParent.transform.position = groundTilemap.GetCellCenterWorld(startCell);
 
@@ -103,6 +109,7 @@ public class GridManager : MonoBehaviour
 
     public void TryExpandBoard()
     {
+        if (PowerManager.Instance != null && PowerManager.Instance.IsAnimating) return;
         if (ResourceManager.Instance.TryPayForExpand())
         {
             ExpandBoard();

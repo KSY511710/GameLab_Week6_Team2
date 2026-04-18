@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -150,5 +151,35 @@ public class PlacedBlockVisual : MonoBehaviour
         {
             foreach (var member in myGroupMembers) if (member != null) member.HideToGroupColor();
         }
+    }
+
+    /// <summary>
+    /// 시퀀서가 그룹/블럭 강조 시 호출. 끝나면 항상 원래(그룹/비그룹) 상태 색으로 복귀.
+    /// 상위 호출자가 동시에 여러 멤버에 대해 StartCoroutine으로 돌려야 정확히 동기화됨.
+    /// </summary>
+    public IEnumerator FlashHighlight(Color highlight, float totalDuration)
+    {
+        if (sr == null) yield break;
+
+        Color baseline = isGrouped ? groupColor : originalColor;
+        float half = Mathf.Max(0.01f, totalDuration * 0.5f);
+
+        float t = 0f;
+        while (t < half)
+        {
+            t += Time.deltaTime;
+            sr.color = Color.Lerp(baseline, highlight, t / half);
+            yield return null;
+        }
+
+        t = 0f;
+        while (t < half)
+        {
+            t += Time.deltaTime;
+            sr.color = Color.Lerp(highlight, baseline, t / half);
+            yield return null;
+        }
+
+        sr.color = baseline;
     }
 }
