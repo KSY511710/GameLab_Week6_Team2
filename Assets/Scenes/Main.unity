@@ -20166,9 +20166,14 @@ MonoBehaviour:
   stepSeconds: 0.8
   highlightDuration: 0.4
   postFinalDelay: 0.7
+  spotlightSettleDelay: 0.12
+  dayEndPerEntryDelay: 0.3
+  dayEndFlashDuration: 0.2
+  dayEndPostTotalDelay: 1.5
   panelRoot: {fileID: 286917277}
   calcStepText: {fileID: 722346238}
-  highlightColor: {r: 1, g: 1, b: 0.4, a: 1}
+  highlightColor: {r: 0, g: 0, b: 0, a: 1}
+  ungroupedHighlightColor: {r: 0.7, g: 0.7, b: 0.7, a: 1}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
