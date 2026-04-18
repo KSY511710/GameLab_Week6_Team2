@@ -64,6 +64,11 @@ public class GachaConnector : MonoBehaviour
     {
         if (gachaSystem == null) return;
         if (ResourceManager.Instance == null) return;
+        if (InventoryManager.Instance != null && InventoryManager.Instance.IsFull())
+        {
+            Debug.LogWarning("가방이 꽉 차서 뽑기를 할 수 없습니다!");
+            return; // 꽉 찼으면 함수를 여기서 끝내서 돈이 안 빠져나가게 막습니다.
+        }
         if (!ResourceManager.Instance.TryPayForBasicDraw()) return;
 
         KSM_GATCHA.GatchaBlockEntry result = gachaSystem.DrawGeneralBlock();
@@ -79,7 +84,11 @@ public class GachaConnector : MonoBehaviour
         if (gachaSystem == null) return;
         if (ResourceManager.Instance == null) return;
         if (!ResourceManager.Instance.TryPayForThemeDraw()) return;
-
+        if (InventoryManager.Instance != null && InventoryManager.Instance.IsFull())
+        {
+            Debug.LogWarning("가방이 꽉 차서 뽑기를 할 수 없습니다!");
+            return; // 꽉 찼으면 함수를 여기서 끝내서 돈이 안 빠져나가게 막습니다.
+        }
         Debug.Log(companyIndex);
         // 1. 가챠 기계에 뽑을 회사를 먼저 알려줍니다.
         gachaSystem.SetSelectedCompanyByIndex(companyIndex);
@@ -99,6 +108,11 @@ public class GachaConnector : MonoBehaviour
         if (gachaSystem == null) return;
         if (ResourceManager.Instance == null) return;
         if (!ResourceManager.Instance.TryPayForThemeDraw()) return;
+        if (InventoryManager.Instance != null && InventoryManager.Instance.IsFull())
+        {
+            Debug.LogWarning("가방이 꽉 차서 뽑기를 할 수 없습니다!");
+            return; // 꽉 찼으면 함수를 여기서 끝내서 돈이 안 빠져나가게 막습니다.
+        }
 
         // 1. 가챠 기계에 뽑을 부품을 먼저 알려줍니다.
         gachaSystem.SetSelectedPartSymbol(partIndex);

@@ -42,6 +42,8 @@ public class GroupInfo
     public int finalShape;
     public int formationMultiplier;
     public float groupPower;
+    public float appliedExchangeRatio;
+    public float estimatedMoneyGen;
 
     // 시각 시퀀서가 재계산 없이 표시할 수 있도록 중간값/멤버 캐시
     public int baseProduction;
@@ -64,6 +66,7 @@ public class PowerManager : MonoBehaviour
 
     [Header("Group Settings")]
     public int groupMinSize = 9; // 인스펙터에서 수정 가능 (10칸부터 그룹)
+    public int groupMinpart = 3;
 
     public List<GroupInfo> activeGroups = new List<GroupInfo>();
     private int nextGroupID = 1;
@@ -106,10 +109,28 @@ public class PowerManager : MonoBehaviour
                 {
                     List<Vector2Int> cluster = GetUnlockedCluster(x, y, board, visited, width, height);
 
-                    // 10칸 이상 모였다면 그룹으로 확정(Lock)
+                    // 1. 먼저 10칸 이상 모였는지 확인
                     if (cluster.Count >= groupMinSize)
                     {
-                        CreateNewGroup(cluster, board);
+                        // 🌟 '부품의 종류'를 세기 위해 HashSet(중복 방지 주머니)을 만듭니다.
+                        HashSet<int> uniqueParts = new HashSet<int>();
+
+                        foreach (Vector2Int pos in cluster)
+                        {
+                            BlockData blockInCluster = board[pos.x, pos.y];
+
+                            if (blockInCluster.attribute.shapeID > 0)
+                            {
+                                // HashSet은 똑같은 부품(shapeID)이 여러 번 들어와도 알아서 1개로 칩니다!
+                                uniqueParts.Add(blockInCluster.attribute.shapeID);
+                            }
+                        }
+
+                        // 3. 서로 다른 종류의 부품이 3종류 이상 포함되어 있을 때만 그룹 확정(Lock)!
+                        if (uniqueParts.Count >= groupMinpart)
+                        {
+                            CreateNewGroup(cluster, board);
+                        }
                     }
                 }
             }
@@ -184,6 +205,9 @@ public class PowerManager : MonoBehaviour
         float colorMultiplier = 1f + (maxColorCount - restColorCount) * 0.2f;
 
         float finalPower = (baseProduction + uniquePartsCount) * completionMultiplier * colorMultiplier;
+        float baseRatio = ResourceManager.Instance != null ? ResourceManager.Instance.ExchangeRatio : 10f;
+        float currentRatio = baseRatio;
+        float estimatedMoney = finalPower / currentRatio;
 
         // --- 정보 저장 ---
         int dominantColor = colorCounts.OrderByDescending(x => x.Value).First().Key;
@@ -191,7 +215,7 @@ public class PowerManager : MonoBehaviour
         Color dominantRealColor = Color.white;
         if (dominantColor == 1) dominantRealColor = new Color(1f, 0.2f, 0.2f);
         else if (dominantColor == 2) dominantRealColor = new Color(0.2f, 0.4f, 1f);
-        else if (dominantColor == 3) dominantRealColor = new Color(1f, 0.9f, 0.2f);
+        else if (dominantColor == 3) dominantRealColor = new Color(0.2f, 1f, 0.2f);
 
         List<PlacedBlockVisual> currentGroupVisuals = new List<PlacedBlockVisual>();
 
@@ -220,6 +244,8 @@ public class PowerManager : MonoBehaviour
             finalColor = dominantColor,
             formationMultiplier = shapeBonus,
             groupPower = finalPower,
+            appliedExchangeRatio = currentRatio,
+            estimatedMoneyGen = estimatedMoney,
             baseProduction = baseProduction,
             uniqueParts = uniquePartsCount,
             completionMultiplier = completionMultiplier,
@@ -238,6 +264,10 @@ public class PowerManager : MonoBehaviour
 
         activeGroups.Add(newGroup);
         nextGroupID++;
+        if (PowerAnimationSequencer.Instance != null)
+        {
+            PowerAnimationSequencer.Instance.EnqueueAnimation(newGroup);
+        }
     }
 
     public void CalculateTotalPower(BlockData[,] board, int width, int height)
@@ -277,6 +307,7 @@ public class PowerManager : MonoBehaviour
         {
             OnTotalPowerChanged?.Invoke();
         }
+        UpdateDisplayedPowerUI();
     }
 
     /// <summary>시퀀서가 일일 정산 직후 호출. powerText에 표시될 "전날 발전량"을 갱신.</summary>
@@ -299,7 +330,7 @@ public class PowerManager : MonoBehaviour
     {
         if (powerText == null) return;
         powerText.text =
-            $"<color=yellow><size=30><b>Yesterday: {yesterdayProduction} GWh</b></size></color>\n" +
+            $"<color=#00FFFF><size=30><b>Live Power: {totalPower} GWh</b></size></color>\n" +
             $"<size=20>(Completed Groups: {activeGroups.Count})</size>";
     }
 
@@ -335,6 +366,40 @@ public class PowerManager : MonoBehaviour
                 // 시각 컨트롤러에게 선을 켜고 끄라고 명령 전달
                 visual.UpdateOutline(showTop, showBottom, showLeft, showRight);
             }
+        }
+    }
+    public void ProceedToNextDay()
+    {
+        if (IsAnimating)
+        {
+            Debug.LogWarning("애니메이션 재생 중입니다! 잠시 후 눌러주세요.");
+            return;
+        }
+
+        if (PowerAnimationSequencer.Instance != null)
+        {
+            // 🌟 시퀀서에게 "영수증 연출 쫙 보여줘! 그리고 다 끝나면() 안의 명령을 실행해!" 라고 넘깁니다.
+            PowerAnimationSequencer.Instance.PlayDayEndSequence(
+                activeGroups,
+                LastUngroupedCount,
+                totalPower,
+                () =>
+                {
+                    // 이 안의 코드는 영수증 연출이 다~ 끝나고 화면이 닫힌 뒤에 실행됩니다.
+                    CommitYesterdayProduction(totalPower);
+                    if (ResourceManager.Instance != null)
+                    {
+                        ResourceManager.Instance.ProcessNextDay();
+                        Debug.Log($"🌙 정산 완료! 다음 날이 시작됩니다. (어제 발전량: {totalPower} GWh)");
+                    }
+                }
+            );
+        }
+        else
+        {
+            // 혹시 시퀀서가 씬에 없을 경우를 대비한 안전 장치 (바로 넘김)
+            CommitYesterdayProduction(totalPower);
+            if (ResourceManager.Instance != null) ResourceManager.Instance.ProcessNextDay();
         }
     }
 }

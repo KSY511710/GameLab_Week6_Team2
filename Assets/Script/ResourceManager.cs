@@ -378,23 +378,71 @@ public class ResourceManager : MonoBehaviour
     // ==========================================================
     //   Exchange
     // ==========================================================
-
     private void AutoExchangeElectricityForMoney()
     {
         int remainingCap = RemainingExchangeCap;
         if (remainingCap <= 0) return;
 
-        int electricity     = GetCurrency(CurrencyType.Electricity);
-        int affordableMoney = electricity / exchangeRatio;
-        int moneyGained     = Mathf.Min(remainingCap, affordableMoney);
-        if (moneyGained <= 0) return;
+        float totalFloatMoney = 0f;
+        float totalFloatPowerSpent = 0f;
 
-        int electricitySpent = moneyGained * exchangeRatio;
-        SpendCurrency(CurrencyType.Electricity, electricitySpent);
-        AddCurrency(CurrencyType.Money, moneyGained);
-        moneyExchangedToday += moneyGained;
+        // --- [1단계] 각 덩어리가 미리 계산해둔 예상 수익(명찰) 가져오기 ---
+        if (PowerManager.Instance != null)
+        {
+            foreach (GroupInfo group in PowerManager.Instance.activeGroups)
+            {
+                if (remainingCap - totalFloatMoney <= 0) break;
 
-        Debug.Log($"<color=yellow>자동 교환</color> {electricitySpent} GWh → ${moneyGained} (오늘 ${moneyExchangedToday}/${dailyExchangeCap})");
+                // 🌟 핵심: 그룹이 스스로 계산해둔 환율과 수익을 그대로 쏙 빼옵니다!
+                float currentRatio = group.appliedExchangeRatio;
+                float affordableFloatMoney = group.estimatedMoneyGen;
+
+                float availableCap = remainingCap - totalFloatMoney;
+                float moneyFromGroup = Mathf.Min(availableCap, affordableFloatMoney);
+
+                if (moneyFromGroup > 0)
+                {
+                    totalFloatMoney += moneyFromGroup;
+                    totalFloatPowerSpent += moneyFromGroup * currentRatio;
+                }
+            }
+        }
+
+        // --- [2단계] 자투리/잉여 전력 정산 (기본 환율 적용) ---
+        float currentElectricity = GetCurrency(CurrencyType.Electricity) - totalFloatPowerSpent;
+        float restAvailableCap = remainingCap - totalFloatMoney;
+
+        if (restAvailableCap > 0 && currentElectricity > 0)
+        {
+            float affordableRestMoney = currentElectricity / exchangeRatio;
+            float moneyFromRest = Mathf.Min(restAvailableCap, affordableRestMoney);
+
+            if (moneyFromRest > 0)
+            {
+                totalFloatMoney += moneyFromRest;
+                totalFloatPowerSpent += moneyFromRest * exchangeRatio;
+            }
+        }
+
+        // --- [3단계] 최종 int 변환 및 지갑 반영 ---
+        int finalMoneyGained = Mathf.FloorToInt(totalFloatMoney);
+
+        if (finalMoneyGained > 0)
+        {
+            // 소수점 아래로 짤려나간 돈만큼 전력을 돌려주는(저축) 방어 코드
+            float ratioMultiplier = finalMoneyGained / totalFloatMoney;
+            int finalPowerSpent = Mathf.RoundToInt(totalFloatPowerSpent * ratioMultiplier);
+
+            SpendCurrency(CurrencyType.Electricity, finalPowerSpent);
+            AddCurrency(CurrencyType.Money, finalMoneyGained);
+            moneyExchangedToday += finalMoneyGained;
+
+            Debug.Log($"<color=yellow>정밀 교환 완료</color> {finalPowerSpent} GWh → ${finalMoneyGained} (오늘 ${moneyExchangedToday}/${dailyExchangeCap})");
+        }
+        else
+        {
+            Debug.Log("<color=grey>교환 대기: 아직 1달러를 만들 전력이 모이지 않았습니다.</color>");
+        }
     }
 
     // ==========================================================
