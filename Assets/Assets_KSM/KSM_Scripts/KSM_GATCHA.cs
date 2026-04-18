@@ -86,9 +86,9 @@ public class KSM_GATCHA : MonoBehaviour
         public BlockSymbolType symbolType = BlockSymbolType.Symbol01;
 
         [Header("블록 크기 정보")]
-        [Range(1, 3)]
-        [Tooltip("블록 크기. 1, 2, 3 중 하나만 사용한다.")]
-        public int blockSize = 1;
+        [Range(2, 4)]
+        [Tooltip("블록 크기. 2, 3, 4 중 하나만 사용한다.")]
+        public int blockSize = 2;
 
         [Header("뽑기 포함 여부")]
         [Tooltip("일반 뽑기 대상에 포함할지 여부")]
@@ -124,10 +124,10 @@ public class KSM_GATCHA : MonoBehaviour
     [SerializeField]
     private bool useRequestedBlockSizeFilter = false;
 
-    [Range(1, 3)]
+    [Range(2, 4)]
     [Tooltip("현재 선택된 블록 크기. 1, 2, 3 중 하나.")]
     [SerializeField]
-    private int requestedBlockSize = 1;
+    private int requestedBlockSize = 2;
 
     /// <summary>
     /// Awake
@@ -900,7 +900,7 @@ public class KSM_GATCHA : MonoBehaviour
             return false;
         }
 
-        if (entry.blockSize < 1 || entry.blockSize > 3)
+        if (entry.blockSize < 2 || entry.blockSize > 4)
         {
             return false;
         }
@@ -1044,7 +1044,7 @@ public class KSM_GATCHA : MonoBehaviour
     /// <returns>1~3 범위로 보정된 값</returns>
     private int NormalizeBlockSize(int blockSize)
     {
-        return Mathf.Clamp(blockSize, 1, 3);
+        return Mathf.Clamp(blockSize, 2, 4);
     }
 
     /// <summary>
@@ -1160,7 +1160,7 @@ public class KSM_GATCHA : MonoBehaviour
             //BlockSymbolType.Symbol09
         };
 
-        for (int size = 1; size <= 3; size++)
+        for (int size = 2; size <= 4; size++)
         {
             for (int companyIndex = 0; companyIndex < companies.Length; companyIndex++)
             {

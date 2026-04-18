@@ -54,6 +54,8 @@ public class GroupInfo
     public int finalShape;
     public int formationMultiplier;
     public float groupPower;
+    public float appliedExchangeRatio;
+    public float estimatedMoneyGen;
 
     // 시각 시퀀서가 재계산 없이 표시할 수 있도록 중간값/멤버 캐시
     public int baseProduction;
@@ -78,6 +80,7 @@ public class PowerManager : MonoBehaviour
 
     [Header("Group Settings")]
     public int groupMinSize = 9; // 인스펙터에서 수정 가능 (10칸부터 그룹)
+    public int groupMinpart = 3;
 
     public List<GroupInfo> activeGroups = new List<GroupInfo>();
     private int nextGroupID = 1;
@@ -119,9 +122,28 @@ public class PowerManager : MonoBehaviour
                 {
                     List<Vector2Int> cluster = GetUnlockedCluster(x, y, board, visited, width, height);
 
+                    // 1. 먼저 10칸 이상 모였는지 확인
                     if (cluster.Count >= groupMinSize)
                     {
-                        CreateNewGroup(cluster, board);
+                        // 🌟 '부품의 종류'를 세기 위해 HashSet(중복 방지 주머니)을 만듭니다.
+                        HashSet<int> uniqueParts = new HashSet<int>();
+
+                        foreach (Vector2Int pos in cluster)
+                        {
+                            BlockData blockInCluster = board[pos.x, pos.y];
+
+                            if (blockInCluster.attribute.shapeID > 0)
+                            {
+                                // HashSet은 똑같은 부품(shapeID)이 여러 번 들어와도 알아서 1개로 칩니다!
+                                uniqueParts.Add(blockInCluster.attribute.shapeID);
+                            }
+                        }
+
+                        // 3. 서로 다른 종류의 부품이 3종류 이상 포함되어 있을 때만 그룹 확정(Lock)!
+                        if (uniqueParts.Count >= groupMinpart)
+                        {
+                            CreateNewGroup(cluster, board);
+                        }
                     }
                 }
             }
@@ -219,6 +241,10 @@ public class PowerManager : MonoBehaviour
         EffectRuntime.Instance.ApplyPowerHooks(ctx);
 
         float finalPower = ctx.Compute();
+        // float finalPower = (baseProduction + uniquePartsCount) * completionMultiplier * colorMultiplier;
+        float baseRatio = ResourceManager.Instance != null ? ResourceManager.Instance.ExchangeRatio : 10f;
+        float currentRatio = baseRatio;
+        float estimatedMoney = finalPower / currentRatio;
 
         // --- 정보 저장 ---
         int dominantColor = colorCounts.OrderByDescending(x => x.Value).First().Key;
@@ -226,7 +252,7 @@ public class PowerManager : MonoBehaviour
         Color dominantRealColor = Color.white;
         if (dominantColor == 1) dominantRealColor = new Color(1f, 0.2f, 0.2f);
         else if (dominantColor == 2) dominantRealColor = new Color(0.2f, 0.4f, 1f);
-        else if (dominantColor == 3) dominantRealColor = new Color(1f, 0.9f, 0.2f);
+        else if (dominantColor == 3) dominantRealColor = new Color(0.2f, 1f, 0.2f);
 
         List<PlacedBlockVisual> currentGroupVisuals = new List<PlacedBlockVisual>();
 
@@ -255,6 +281,8 @@ public class PowerManager : MonoBehaviour
             finalColor = dominantColor,
             formationMultiplier = shapeBonus,
             groupPower = finalPower,
+            appliedExchangeRatio = currentRatio,
+            estimatedMoneyGen = estimatedMoney,
             baseProduction = baseProduction,
             uniqueParts = uniquePartsCount,
             completionMultiplier = completionMultiplier,
@@ -391,35 +419,41 @@ public class PowerManager : MonoBehaviour
     }
     public void ProceedToNextDay()
     {
-        if (IsAnimating)
+        if (IsAnimating) return;
+
+        SettlementData data = new SettlementData();
+        data.totalMoneyCap = ResourceManager.Instance != null ? ResourceManager.Instance.RemainingExchangeCap : 100f;
+
+        // 1. 빨/파/초 그룹 생산량 합산
+        foreach (GroupInfo group in activeGroups)
         {
-            Debug.LogWarning("애니메이션 재생 중입니다! 잠시 후 눌러주세요.");
-            return;
+            if (group.finalColor == 1) { data.redPower += group.groupPower; data.redMoney += group.estimatedMoneyGen; }
+            else if (group.finalColor == 2) { data.bluePower += group.groupPower; data.blueMoney += group.estimatedMoneyGen; }
+            else if (group.finalColor == 3) { data.greenPower += group.groupPower; data.greenMoney += group.estimatedMoneyGen; }
         }
 
-        if (PowerAnimationSequencer.Instance != null)
+        // 🌟 2. 자투리(Scrap) 생산량 및 예상 수익 계산
+        // 전체 전력에서 그룹이 생산한 전력을 모두 빼면 자투리 전력이 남습니다.
+        data.scrapPower = totalPower - (data.redPower + data.bluePower + data.greenPower);
+
+        // 자투리 전력은 특별 우대 환율 없이 '기본 환율'로만 돈으로 바뀝니다.
+        float baseRatio = ResourceManager.Instance != null ? ResourceManager.Instance.ExchangeRatio : 10f;
+        data.scrapMoney = data.scrapPower / baseRatio;
+
+        // 3. 애니메이션 재생
+        if (SettlementUIController.Instance != null)
         {
-            // 🌟 시퀀서에게 "영수증 연출 쫙 보여줘! 그리고 다 끝나면() 안의 명령을 실행해!" 라고 넘깁니다.
-            PowerAnimationSequencer.Instance.PlayDayEndSequence(
-                activeGroups,
-                LastUngroupedCount,
-                totalPower,
-                () =>
-                {
-                    // 이 안의 코드는 영수증 연출이 다~ 끝나고 화면이 닫힌 뒤에 실행됩니다.
-                    CommitYesterdayProduction(totalPower);
-                    EffectRuntime.Instance.NotifyDailySettle();
-                    if (ResourceManager.Instance != null)
-                    {
-                        ResourceManager.Instance.ProcessNextDay();
-                        Debug.Log($"🌙 정산 완료! 다음 날이 시작됩니다. (어제 발전량: {totalPower} GWh)");
-                    }
-                }
-            );
+            SetAnimating(true);
+
+            SettlementUIController.Instance.PlaySettlementAnimation(data, () =>
+            {
+                CommitYesterdayProduction(totalPower);
+                if (ResourceManager.Instance != null) ResourceManager.Instance.ProcessNextDay();
+                SetAnimating(false);
+            });
         }
         else
         {
-            // 혹시 시퀀서가 씬에 없을 경우를 대비한 안전 장치 (바로 넘김)
             CommitYesterdayProduction(totalPower);
             EffectRuntime.Instance.NotifyDailySettle();
             if (ResourceManager.Instance != null) ResourceManager.Instance.ProcessNextDay();
