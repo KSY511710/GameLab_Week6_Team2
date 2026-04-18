@@ -238,6 +238,10 @@ public class PowerManager : MonoBehaviour
 
         activeGroups.Add(newGroup);
         nextGroupID++;
+        if (PowerAnimationSequencer.Instance != null)
+        {
+            PowerAnimationSequencer.Instance.EnqueueAnimation(newGroup);
+        }
     }
 
     public void CalculateTotalPower(BlockData[,] board, int width, int height)
@@ -277,6 +281,7 @@ public class PowerManager : MonoBehaviour
         {
             OnTotalPowerChanged?.Invoke();
         }
+        UpdateDisplayedPowerUI();
     }
 
     /// <summary>시퀀서가 일일 정산 직후 호출. powerText에 표시될 "전날 발전량"을 갱신.</summary>
@@ -299,7 +304,7 @@ public class PowerManager : MonoBehaviour
     {
         if (powerText == null) return;
         powerText.text =
-            $"<color=yellow><size=30><b>Yesterday: {yesterdayProduction} GWh</b></size></color>\n" +
+            $"<color=#00FFFF><size=30><b>Live Power: {totalPower} GWh</b></size></color>\n" +
             $"<size=20>(Completed Groups: {activeGroups.Count})</size>";
     }
 
@@ -335,6 +340,40 @@ public class PowerManager : MonoBehaviour
                 // 시각 컨트롤러에게 선을 켜고 끄라고 명령 전달
                 visual.UpdateOutline(showTop, showBottom, showLeft, showRight);
             }
+        }
+    }
+    public void ProceedToNextDay()
+    {
+        if (IsAnimating)
+        {
+            Debug.LogWarning("애니메이션 재생 중입니다! 잠시 후 눌러주세요.");
+            return;
+        }
+
+        if (PowerAnimationSequencer.Instance != null)
+        {
+            // 🌟 시퀀서에게 "영수증 연출 쫙 보여줘! 그리고 다 끝나면() 안의 명령을 실행해!" 라고 넘깁니다.
+            PowerAnimationSequencer.Instance.PlayDayEndSequence(
+                activeGroups,
+                LastUngroupedCount,
+                totalPower,
+                () =>
+                {
+                    // 이 안의 코드는 영수증 연출이 다~ 끝나고 화면이 닫힌 뒤에 실행됩니다.
+                    CommitYesterdayProduction(totalPower);
+                    if (ResourceManager.Instance != null)
+                    {
+                        ResourceManager.Instance.ProcessNextDay();
+                        Debug.Log($"🌙 정산 완료! 다음 날이 시작됩니다. (어제 발전량: {totalPower} GWh)");
+                    }
+                }
+            );
+        }
+        else
+        {
+            // 혹시 시퀀서가 씬에 없을 경우를 대비한 안전 장치 (바로 넘김)
+            CommitYesterdayProduction(totalPower);
+            if (ResourceManager.Instance != null) ResourceManager.Instance.ProcessNextDay();
         }
     }
 }
