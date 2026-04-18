@@ -11,6 +11,12 @@ public enum CurrencyType
     Ticket
 }
 
+public enum DrawKind
+{
+    Basic,
+    Theme
+}
+
 public class ResourceManager : MonoBehaviour
 {
     public static ResourceManager Instance;
@@ -31,22 +37,37 @@ public class ResourceManager : MonoBehaviour
     [SerializeField]
     private AnimationCurve dailyProductionGoalCurve = AnimationCurve.Linear(0f, 200f, 10f, 20000f);
 
-    [Tooltip("세션별 전력 → 돈 교환 캡 ($). 세션 시작 시 고정, 세션 종료 전까지 불변.")]
+    [Tooltip("세션별 '일일' 전력 → 돈 교환 캡 ($). 매 턴 시작마다 사용량이 0으로 리셋된다.")]
+    [FormerlySerializedAs("sessionExchangeCapCurve")]
     [SerializeField]
-    private AnimationCurve sessionExchangeCapCurve = AnimationCurve.Linear(0f, 20f, 10f, 2000f);
+    private AnimationCurve dailyExchangeCapCurve = AnimationCurve.Linear(0f, 20f, 10f, 2000f);
 
-    [Header("비용 설정")]
-    [Tooltip("기본 블록 뽑기 비용 (돈, $)")]
-    public int drawCost = 50;
+    [Header("확장 비용 곡선 (X = 누적 확장 횟수, Y = $ 비용)")]
+    [Tooltip("그리드 확장 누적 횟수에 따른 비용 ($). 확장은 영구적이므로 세션을 넘어도 카운터가 유지된다.")]
+    [SerializeField]
+    private AnimationCurve expandCostCurve = AnimationCurve.Linear(0f, 50f, 10f, 1000f);
 
+    [Header("기본 뽑기 비용 곡선")]
+    [Tooltip("X = SessionIndex → 세션별 기본 뽑기 베이스 비용 ($).")]
+    [SerializeField]
+    private AnimationCurve basicDrawBaseCostCurve = AnimationCurve.Linear(0f, 10f, 10f, 100f);
+
+    [Tooltip("X = 세션 내 기본 뽑기 사용 횟수 → 베이스 비용에 곱해지는 배율. 세션 시작 시 0으로 리셋.")]
+    [SerializeField]
+    private AnimationCurve basicDrawUsageMultiplierCurve = AnimationCurve.Linear(0f, 1f, 20f, 2f);
+
+    [Header("테마 뽑기 비용 곡선")]
+    [Tooltip("X = SessionIndex → 세션별 테마(색상) 뽑기 베이스 비용 ($).")]
+    [SerializeField]
+    private AnimationCurve themeDrawBaseCostCurve = AnimationCurve.Linear(0f, 30f, 10f, 300f);
+
+    [Tooltip("X = 세션 내 테마 뽑기 사용 횟수 → 베이스 비용에 곱해지는 배율. 세션 시작 시 0으로 리셋.")]
+    [SerializeField]
+    private AnimationCurve themeDrawUsageMultiplierCurve = AnimationCurve.Linear(0f, 1f, 10f, 3f);
+
+    [Header("특수 뽑기 (티켓)")]
     [Tooltip("특수 블록 뽑기 비용 (티켓)")]
     public int specialDrawCost = 1;
-
-    [Tooltip("그리드 확장 비용 (전력, GWh)")]
-    public int expandCost = 100;
-
-    [Tooltip("확장할 때마다 비용이 곱해지는 배율")]
-    public float expandMultiplier = 1.5f;
 
     [Header("스킵 보상")]
     [Tooltip("스킵 시 남은 D-Day 1일당 지급되는 티켓 수")]
@@ -74,20 +95,26 @@ public class ResourceManager : MonoBehaviour
 
     private readonly Dictionary<CurrencyType, int> wallet = new();
 
+    // Day / Session
     private int totalDay;
     private int currentDDay;
     private int sessionIndex;
-
     private int todayProduction;
     private int dailyProductionGoal;
-    private int sessionExchangeCap;
-    private int moneyExchangedThisSession;
-
     private bool gameOver;
     private bool lastCanSkip;
 
+    // Exchange
+    private int dailyExchangeCap;         // 세션 시작 시 고정, 매일 사용
+    private int moneyExchangedToday;      // 매 턴 시작마다 0 리셋
+
+    // Usage counters
+    private int expandCount;                   // 영구 누적
+    private int basicDrawCountThisSession;     // 세션 내 리셋
+    private int themeDrawCountThisSession;     // 세션 내 리셋
+
     // ==========================================================
-    //   Events (UI/상위 시스템 디커플링용)
+    //   Events
     // ==========================================================
 
     public static event Action<CurrencyType, int> OnCurrencyChanged;
@@ -95,22 +122,27 @@ public class ResourceManager : MonoBehaviour
     public static event Action<int> OnSessionAdvanced;
     public static event Action<bool> OnSkipAvailability;
     public static event Action OnGameOver;
+    /// <summary>뽑기 비용이 바뀐 시점에 발화 (세션 진입, 뽑기 사용 직후 등). 상점 라벨이 구독.</summary>
+    public static event Action OnDrawCostChanged;
 
     // ==========================================================
     //   Public Properties
     // ==========================================================
 
-    public int TotalDay                  => totalDay;
-    public int CurrentD_Day              => currentDDay;
-    public int SessionIndex              => sessionIndex;
-    public int D_DayInterval             => dDay;
-    public int DailyProductionGoal       => dailyProductionGoal;
-    public int TodayProduction           => todayProduction;
-    public int SessionExchangeCap        => sessionExchangeCap;
-    public int MoneyExchangedThisSession => moneyExchangedThisSession;
-    public int RemainingExchangeCap      => Mathf.Max(0, sessionExchangeCap - moneyExchangedThisSession);
-    public int ExchangeRatio             => exchangeRatio;
-    public bool IsGameOver               => gameOver;
+    public int TotalDay                => totalDay;
+    public int CurrentD_Day            => currentDDay;
+    public int SessionIndex            => sessionIndex;
+    public int D_DayInterval           => dDay;
+    public int DailyProductionGoal     => dailyProductionGoal;
+    public int TodayProduction         => todayProduction;
+    public int DailyExchangeCap        => dailyExchangeCap;
+    public int MoneyExchangedToday     => moneyExchangedToday;
+    public int RemainingExchangeCap    => Mathf.Max(0, dailyExchangeCap - moneyExchangedToday);
+    public int ExchangeRatio           => exchangeRatio;
+    public int ExpandCount             => expandCount;
+    public int BasicDrawCountThisSession => basicDrawCountThisSession;
+    public int ThemeDrawCountThisSession => themeDrawCountThisSession;
+    public bool IsGameOver             => gameOver;
 
     // ==========================================================
     //   Unity Lifecycle
@@ -128,13 +160,25 @@ public class ResourceManager : MonoBehaviour
             return;
         }
 
-        // 곡선 경계 바깥은 마지막 키프레임 값으로 수렴
-        dailyProductionGoalCurve.preWrapMode  = WrapMode.ClampForever;
-        dailyProductionGoalCurve.postWrapMode = WrapMode.ClampForever;
-        sessionExchangeCapCurve.preWrapMode   = WrapMode.ClampForever;
-        sessionExchangeCapCurve.postWrapMode  = WrapMode.ClampForever;
-
+        ClampCurveWrapModes();
         InitializeWallet();
+
+        // PowerManager의 라이브 발전량 변화에 따라 Skip 가용성 재평가
+        PowerManager.OnTotalPowerChanged += HandleTotalPowerChanged;
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this)
+        {
+            PowerManager.OnTotalPowerChanged -= HandleTotalPowerChanged;
+            Instance = null;
+        }
+    }
+
+    private void HandleTotalPowerChanged()
+    {
+        RaiseSkipAvailabilityIfChanged();
     }
 
     private void Start()
@@ -144,6 +188,28 @@ public class ResourceManager : MonoBehaviour
         EmitAllCurrencyEvents();
         RaiseDayEvent();
         RaiseSkipAvailabilityIfChanged();
+        OnDrawCostChanged?.Invoke();
+    }
+
+    private void ClampCurveWrapModes()
+    {
+        AnimationCurve[] allCurves =
+        {
+            dailyProductionGoalCurve,
+            dailyExchangeCapCurve,
+            expandCostCurve,
+            basicDrawBaseCostCurve,
+            basicDrawUsageMultiplierCurve,
+            themeDrawBaseCostCurve,
+            themeDrawUsageMultiplierCurve
+        };
+
+        foreach (var curve in allCurves)
+        {
+            if (curve == null) continue;
+            curve.preWrapMode  = WrapMode.ClampForever;
+            curve.postWrapMode = WrapMode.ClampForever;
+        }
     }
 
     private void InitializeWallet()
@@ -154,6 +220,7 @@ public class ResourceManager : MonoBehaviour
 
         totalDay        = 1;
         todayProduction = 0;
+        expandCount     = 0;
     }
 
     // ==========================================================
@@ -196,13 +263,12 @@ public class ResourceManager : MonoBehaviour
         return true;
     }
 
-    // 호환 래퍼 — 기존 호출부 + 가독성
-    public void AddElectric(int amount)  => AddCurrency(CurrencyType.Electricity, amount);
-    public bool SpendElectric(int cost)  => SpendCurrency(CurrencyType.Electricity, cost);
-    public void AddMoney(int amount)     => AddCurrency(CurrencyType.Money, amount);
-    public bool SpendMoney(int cost)     => SpendCurrency(CurrencyType.Money, cost);
-    public void AddTicket(int amount)    => AddCurrency(CurrencyType.Ticket, amount);
-    public bool SpendTicket(int count)   => SpendCurrency(CurrencyType.Ticket, count);
+    public void AddElectric(int amount) => AddCurrency(CurrencyType.Electricity, amount);
+    public bool SpendElectric(int cost) => SpendCurrency(CurrencyType.Electricity, cost);
+    public void AddMoney(int amount)    => AddCurrency(CurrencyType.Money, amount);
+    public bool SpendMoney(int cost)    => SpendCurrency(CurrencyType.Money, cost);
+    public void AddTicket(int amount)   => AddCurrency(CurrencyType.Ticket, amount);
+    public bool SpendTicket(int count)  => SpendCurrency(CurrencyType.Ticket, count);
 
     // ==========================================================
     //   Day / Session Flow
@@ -212,11 +278,14 @@ public class ResourceManager : MonoBehaviour
     {
         if (gameOver) return;
 
+        // 매 턴 시작마다 일일 교환 사용량을 0으로 리셋
+        moneyExchangedToday = 0;
+
         // 1. 오늘 생산량 스냅샷
         todayProduction = PowerManager.Instance != null ? PowerManager.Instance.GetTotalPower() : 0;
         AddCurrency(CurrencyType.Electricity, todayProduction);
 
-        // 2. 자동 교환 (세션 캡 범위 내)
+        // 2. 자동 교환 (오늘의 캡 범위 내)
         AutoExchangeElectricityForMoney();
 
         // 3. 시간 경과
@@ -238,7 +307,12 @@ public class ResourceManager : MonoBehaviour
 
     public bool CanSkip()
     {
-        return !gameOver && currentDDay > 0 && todayProduction >= dailyProductionGoal;
+        if (gameOver || currentDDay <= 0) return false;
+        // 시퀀스(Next Day 애니메이션) 진행 중에는 Skip 차단
+        if (PowerManager.Instance != null && PowerManager.Instance.IsAnimating) return false;
+        // 정산 전이라도 현재 보드에서 일일 목표를 충족하면 Skip 허용
+        int liveProduction = PowerManager.Instance != null ? PowerManager.Instance.GetTotalPower() : 0;
+        return liveProduction >= dailyProductionGoal;
     }
 
     public bool TrySkip()
@@ -281,20 +355,24 @@ public class ResourceManager : MonoBehaviour
 
     private void StartNewSession(int newSessionIndex, bool isInitial)
     {
-        sessionIndex             = newSessionIndex;
-        currentDDay              = dDay;
-        moneyExchangedThisSession = 0;
+        sessionIndex               = newSessionIndex;
+        currentDDay                = dDay;
+        moneyExchangedToday        = 0;
+        basicDrawCountThisSession  = 0;
+        themeDrawCountThisSession  = 0;
 
-        dailyProductionGoal = Mathf.Max(0, Mathf.RoundToInt(dailyProductionGoalCurve.Evaluate(sessionIndex)));
-        sessionExchangeCap  = Mathf.Max(0, Mathf.RoundToInt(sessionExchangeCapCurve.Evaluate(sessionIndex)));
+        dailyProductionGoal = Mathf.Max(0, EvaluateCurve(dailyProductionGoalCurve, sessionIndex));
+        dailyExchangeCap    = Mathf.Max(0, EvaluateCurve(dailyExchangeCapCurve, sessionIndex));
 
         if (!isInitial)
         {
-            Debug.Log($"<color=magenta>세션 {sessionIndex + 1} 시작!</color> 목표 {dailyProductionGoal} GWh/day · 교환 캡 ${sessionExchangeCap}");
+            Debug.Log($"<color=magenta>세션 {sessionIndex + 1} 시작!</color> 목표 {dailyProductionGoal} GWh/day · 일일 교환 캡 ${dailyExchangeCap}");
         }
 
         OnSessionAdvanced?.Invoke(sessionIndex);
         RaiseDayEvent();
+        // 세션 진입 시 baseCost와 사용 카운터가 모두 바뀌므로 라벨 갱신 신호
+        OnDrawCostChanged?.Invoke();
     }
 
     // ==========================================================
@@ -314,19 +392,70 @@ public class ResourceManager : MonoBehaviour
         int electricitySpent = moneyGained * exchangeRatio;
         SpendCurrency(CurrencyType.Electricity, electricitySpent);
         AddCurrency(CurrencyType.Money, moneyGained);
-        moneyExchangedThisSession += moneyGained;
+        moneyExchangedToday += moneyGained;
 
-        Debug.Log($"<color=yellow>자동 교환</color> {electricitySpent} GWh → ${moneyGained} (세션 누적 ${moneyExchangedThisSession}/${sessionExchangeCap})");
+        Debug.Log($"<color=yellow>자동 교환</color> {electricitySpent} GWh → ${moneyGained} (오늘 ${moneyExchangedToday}/${dailyExchangeCap})");
     }
 
     // ==========================================================
-    //   Expand Cost
+    //   Cost Queries & Pay Helpers
     // ==========================================================
 
-    public void IncreaseExpandCost()
+    public int GetExpandCost()
     {
-        expandCost = Mathf.Max(1, (int)(expandCost * expandMultiplier));
+        return Mathf.Max(0, EvaluateCurve(expandCostCurve, expandCount));
+    }
+
+    public int GetBasicDrawCost()
+    {
+        float baseCost   = Mathf.Max(0f, basicDrawBaseCostCurve.Evaluate(sessionIndex));
+        float multiplier = Mathf.Max(0f, basicDrawUsageMultiplierCurve.Evaluate(basicDrawCountThisSession));
+        return Mathf.Max(0, Mathf.RoundToInt(baseCost * multiplier));
+    }
+
+    public int GetThemeDrawCost()
+    {
+        float baseCost   = Mathf.Max(0f, themeDrawBaseCostCurve.Evaluate(sessionIndex));
+        float multiplier = Mathf.Max(0f, themeDrawUsageMultiplierCurve.Evaluate(themeDrawCountThisSession));
+        return Mathf.Max(0, Mathf.RoundToInt(baseCost * multiplier));
+    }
+
+    /// <summary>UI 라벨이 종류별 가격을 한 메서드로 조회할 수 있도록 분기.</summary>
+    public int GetDrawCost(DrawKind kind)
+    {
+        return kind == DrawKind.Basic ? GetBasicDrawCost() : GetThemeDrawCost();
+    }
+
+    public bool TryPayForExpand()
+    {
+        int cost = GetExpandCost();
+        if (!SpendMoney(cost)) return false;
+
+        expandCount++;
         UpdateUI();
+        return true;
+    }
+
+    public bool TryPayForBasicDraw()
+    {
+        int cost = GetBasicDrawCost();
+        if (!SpendMoney(cost)) return false;
+
+        basicDrawCountThisSession++;
+        UpdateUI();
+        OnDrawCostChanged?.Invoke();
+        return true;
+    }
+
+    public bool TryPayForThemeDraw()
+    {
+        int cost = GetThemeDrawCost();
+        if (!SpendMoney(cost)) return false;
+
+        themeDrawCountThisSession++;
+        UpdateUI();
+        OnDrawCostChanged?.Invoke();
+        return true;
     }
 
     // ==========================================================
@@ -351,10 +480,10 @@ public class ResourceManager : MonoBehaviour
             sessionGoalText.text = $"Session {sessionIndex + 1}: {dailyProductionGoal} GWh/day";
 
         if (exchangeCapText != null)
-            exchangeCapText.text = $"Exchange: ${moneyExchangedThisSession} / ${sessionExchangeCap}";
+            exchangeCapText.text = $"Today Exchange: ${moneyExchangedToday} / ${dailyExchangeCap}";
 
         if (expandCostText != null)
-            expandCostText.text = $"Expand: {expandCost} GWh";
+            expandCostText.text = $"Expand: ${GetExpandCost()}";
     }
 
     private void EmitAllCurrencyEvents()
@@ -377,5 +506,11 @@ public class ResourceManager : MonoBehaviour
             lastCanSkip = canSkipNow;
             OnSkipAvailability?.Invoke(canSkipNow);
         }
+    }
+
+    private static int EvaluateCurve(AnimationCurve curve, int x)
+    {
+        if (curve == null) return 0;
+        return Mathf.RoundToInt(curve.Evaluate(x));
     }
 }

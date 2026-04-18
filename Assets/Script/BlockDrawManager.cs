@@ -9,15 +9,14 @@ public class BlockDrawManager : MonoBehaviour
 
     public void DrawNewBlock()
     {
-        // 돈이 충분할 때만 뽑기 진행
-        if (ResourceManager.Instance.SpendMoney(ResourceManager.Instance.drawCost))
+        // 돈이 충분할 때만 뽑기 진행 (비용은 세션/사용 횟수 곡선 기반)
+        if (ResourceManager.Instance.TryPayForBasicDraw())
         {
             // 1. 등록된 인벤토리 블록 중 하나를 랜덤으로 선택
             int randomIndex = Random.Range(0, inventoryBlocks.Count);
 
             // 2. 해당 블록의 개수(Count)를 +1 증가
             inventoryBlocks[randomIndex].AddBlock();
-            
 
             Debug.Log($"<color=cyan>뽑기 성공!</color> {randomIndex + 1}번째 인벤토리 블록 획득!");
         }
