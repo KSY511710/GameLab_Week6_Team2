@@ -18,8 +18,11 @@ namespace Special.Integration
         [Header("Definition")]
         public SpecialBlockDefinition definition;
 
-        [Tooltip("보드에 실제로 소환될 1셀 Sprite 프리팹. 일반 블럭과 동일한 프리팹 재사용 가능.")]
-        public GameObject blockPrefab;
+        [Tooltip("Anchor(0,0) 셀에 소환될 중앙 프리팹. 일반 블럭의 centerBlockPrefab 과 동일 슬롯.")]
+        public GameObject centerBlockPrefab;
+
+        [Tooltip("Anchor 외 모든 칸에 소환될 자투리 프리팹. 모든 셀에 같은 룩이 필요하면 centerBlockPrefab 과 동일하게 지정.")]
+        public GameObject sideBlockPrefab;
 
         [Header("Inventory")]
         public int blockCount = 0;
@@ -78,11 +81,14 @@ namespace Special.Integration
         public void OnBeginDrag(PointerEventData eventData)
         {
             if (blockCount <= 0 || definition == null || gridManager == null) return;
+            if (centerBlockPrefab == null) return;
             isDragging = true;
             startPos = transform.position;
             img.enabled = false;
 
-            previewGhost = gridManager.CreateModularPreview(definition.shapeCoords, blockPrefab, invalidTint);
+            // 자투리 프리팹이 비어 있으면 중앙 프리팹으로 대체. 단일 룩 특수 블럭의 흔한 케이스.
+            GameObject sideFallback = sideBlockPrefab != null ? sideBlockPrefab : centerBlockPrefab;
+            previewGhost = gridManager.CreateModularPreview(definition.shapeCoords, centerBlockPrefab, sideFallback, invalidTint);
             ghostRenderers = previewGhost.GetComponentsInChildren<SpriteRenderer>();
             OnDrag(eventData);
         }
@@ -131,7 +137,8 @@ namespace Special.Integration
             {
                 int colorID = definition.colorBinding == SpecialColorBinding.Single ? definition.ResolveSingleColorID() : 0;
                 // MultiPrimary 는 SpecialBlockResolver 가 그룹화 시점에 확정하므로 설치 시점은 0.
-                gridManager.PlaceShape(cellPos, definition.shapeCoords, colorID, definition.uniqueShapeId, blockPrefab, definition);
+                GameObject sideFallback = sideBlockPrefab != null ? sideBlockPrefab : centerBlockPrefab;
+                gridManager.PlaceShape(cellPos, definition.shapeCoords, colorID, definition.uniqueShapeId, centerBlockPrefab, sideFallback, definition);
                 blockCount--;
                 UpdateUI();
             }

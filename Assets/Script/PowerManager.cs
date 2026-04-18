@@ -441,6 +441,8 @@ public class PowerManager : MonoBehaviour
         data.scrapMoney = data.scrapPower / baseRatio;
 
         // 3. 애니메이션 재생
+        // NotifyDailySettle 은 두 경로 모두에서 발화돼야 ProduceFromEmptyCellsEffect 같은
+        // DailySettle 훅이 정상 동작한다 (SettlementUI 가 있을 때만 동작하면 안 됨).
         if (SettlementUIController.Instance != null)
         {
             SetAnimating(true);
@@ -448,6 +450,7 @@ public class PowerManager : MonoBehaviour
             SettlementUIController.Instance.PlaySettlementAnimation(data, () =>
             {
                 CommitYesterdayProduction(totalPower);
+                EffectRuntime.Instance.NotifyDailySettle();
                 if (ResourceManager.Instance != null) ResourceManager.Instance.ProcessNextDay();
                 SetAnimating(false);
             });
