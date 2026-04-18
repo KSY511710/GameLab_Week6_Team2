@@ -1,4 +1,6 @@
 using System.Collections;
+using Special.Data;
+using Special.Runtime;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
@@ -51,7 +53,7 @@ public class GridManager : MonoBehaviour
         return new Vector2Int(tileX - currentOffset.x, tileY - currentOffset.y);
     }
 
-    public bool CanPlaceShape(Vector3Int startCell, Vector2Int[] shapeCoords)
+    public bool CanPlaceShape(Vector3Int startCell, Vector2Int[] shapeCoords, SpecialBlockDefinition specialDef = null)
     {
         // Next Day 시퀀스 진행 중이면 placement-eligibility 자체를 거부 (블럭 소진 방지)
         if (PowerManager.Instance != null && PowerManager.Instance.IsAnimating) return false;
@@ -65,17 +67,29 @@ public class GridManager : MonoBehaviour
             // 빈 칸이 아닌지 검사
             if (boardData[arrayIdx.x, arrayIdx.y] != null && boardData[arrayIdx.x, arrayIdx.y].attribute.colorID > 0) return false;
         }
+
+        // 특수 블럭은 전체/구역 설치 제한 검사
+        if (specialDef != null)
+        {
+            Vector2Int anchorArray = TileToArrayIndex(startCell.x, startCell.y);
+            int zoneId = ZoneServiceLocator.Current.GetZoneIdFromCell(anchorArray);
+            if (!SpecialBlockRegistry.Instance.CanPlace(specialDef, zoneId)) return false;
+        }
+
         return true;
     }
 
     // 📌 colorID와 shapeID를 모두 받아서 저장합니다.
-    public void PlaceShape(Vector3Int startCell, Vector2Int[] shapeCoords, int colorID, int shapeID, GameObject prefab)
+    public void PlaceShape(Vector3Int startCell, Vector2Int[] shapeCoords, int colorID, int shapeID, GameObject prefab, SpecialBlockDefinition specialDef = null)
     {
         // Next Day 시퀀스 진행 중에는 보드를 변경하지 않는다 (PowerManager.activeGroups 일관성 보장).
         if (PowerManager.Instance != null && PowerManager.Instance.IsAnimating) return;
 
-        GameObject buildingParent = new GameObject("MultiCell_Building");
+        GameObject buildingParent = new GameObject(specialDef != null ? $"Special_{specialDef.id}" : "MultiCell_Building");
         buildingParent.transform.position = groundTilemap.GetCellCenterWorld(startCell);
+
+        System.Collections.Generic.List<Vector2Int> footprint = specialDef != null ? new System.Collections.Generic.List<Vector2Int>(shapeCoords.Length) : null;
+        Vector2Int anchorArray = TileToArrayIndex(startCell.x, startCell.y);
 
         foreach (var offset in shapeCoords)
         {
@@ -89,13 +103,22 @@ public class GridManager : MonoBehaviour
 
             boardData[arrayIdx.x, arrayIdx.y] = new BlockData
             {
-                attribute = new BlockAttribute(colorID, shapeID),
+                attribute = new BlockAttribute(colorID, shapeID, specialDef),
                 isGrouped = false,
                 groupID = 0,
                 blockObject = cellPart
             };
 
             buildingObjects[arrayIdx.x, arrayIdx.y] = buildingParent;
+            footprint?.Add(arrayIdx);
+        }
+
+        // 특수 블럭이면 Registry 에 등록 → 효과 Activate. PowerManager 계산 전에 등록해야
+        // Global/Zone 스코프 효과가 첫 정산부터 반영된다.
+        if (specialDef != null)
+        {
+            int zoneId = ZoneServiceLocator.Current.GetZoneIdFromCell(anchorArray);
+            SpecialBlockRegistry.Instance.RegisterPlacement(specialDef, anchorArray, footprint, zoneId);
         }
 
         // 설치 후 전력 계산 및 그룹화 요청
@@ -105,6 +128,19 @@ public class GridManager : MonoBehaviour
             PowerManager.Instance.CalculateTotalPower(boardData, width, height);
             PowerManager.Instance.UpdateAllOutlines(boardData, width, height);
         }
+    }
+
+    // 효과가 스코프 내 셀을 조회할 때 쓰는 read-only 헬퍼. 범위 밖은 null.
+    public BlockData GetBlockAtArrayIndex(Vector2Int arrayIdx)
+    {
+        if (arrayIdx.x < 0 || arrayIdx.x >= width || arrayIdx.y < 0 || arrayIdx.y >= height) return null;
+        return boardData[arrayIdx.x, arrayIdx.y];
+    }
+
+    public bool IsEmptyCell(Vector2Int arrayIdx)
+    {
+        BlockData cell = GetBlockAtArrayIndex(arrayIdx);
+        return cell == null || cell.attribute.colorID <= 0;
     }
 
     public void TryExpandBoard()
