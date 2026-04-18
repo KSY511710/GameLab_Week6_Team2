@@ -106,10 +106,28 @@ public class PowerManager : MonoBehaviour
                 {
                     List<Vector2Int> cluster = GetUnlockedCluster(x, y, board, visited, width, height);
 
-                    // 10칸 이상 모였다면 그룹으로 확정(Lock)
+                    // 1. 먼저 10칸 이상 모였는지 확인
                     if (cluster.Count >= groupMinSize)
                     {
-                        CreateNewGroup(cluster, board);
+                        // 🌟 '부품의 종류'를 세기 위해 HashSet(중복 방지 주머니)을 만듭니다.
+                        HashSet<int> uniqueParts = new HashSet<int>();
+
+                        foreach (Vector2Int pos in cluster)
+                        {
+                            BlockData blockInCluster = board[pos.x, pos.y];
+
+                            if (blockInCluster.attribute.shapeID > 0)
+                            {
+                                // HashSet은 똑같은 부품(shapeID)이 여러 번 들어와도 알아서 1개로 칩니다!
+                                uniqueParts.Add(blockInCluster.attribute.shapeID);
+                            }
+                        }
+
+                        // 3. 서로 다른 종류의 부품이 3종류 이상 포함되어 있을 때만 그룹 확정(Lock)!
+                        if (uniqueParts.Count >= 3)
+                        {
+                            CreateNewGroup(cluster, board);
+                        }
                     }
                 }
             }
