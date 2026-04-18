@@ -10,7 +10,10 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
     public KSM_GATCHA.BlockSymbolType symbolType = KSM_GATCHA.BlockSymbolType.Symbol01;
     [Range(2, 4)] public int blockSize = 2;
 
-    public GameObject blockPrefab;
+    // 🌟 [수정됨] 단일 프리팹 대신 중앙용, 자투리용 2개를 받습니다!
+    [Header("Visual Prefabs")]
+    public GameObject centerBlockPrefab;
+    public GameObject sideBlockPrefab;
 
     [Header("Shape Settings")]
     public Vector2Int[] shapeCoords = { new Vector2Int(0, 0) };
@@ -30,7 +33,6 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
     private SpriteRenderer[] ghostRenderers;
     private Vector3Int lastCellPos;
 
-
     void Start()
     {
         gridManager = Object.FindAnyObjectByType<GridManager>();
@@ -43,28 +45,25 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
             originalRotation = transform.rotation;
         }
     }
+
     public void InitializeBlock(KSM_GATCHA.CompanyColor c, KSM_GATCHA.BlockSymbolType s, int size)
     {
         this.companyColor = c;
         this.symbolType = s;
         this.blockSize = size;
 
-        // 1. 색상 자동 변경 (이미지 색 바꾸기)
         img = GetComponent<Image>();
         if (c == KSM_GATCHA.CompanyColor.Red) img.color = new Color(1f, 0.2f, 0.2f);
         else if (c == KSM_GATCHA.CompanyColor.Blue) img.color = new Color(0.2f, 0.4f, 1f);
-        else if (c == KSM_GATCHA.CompanyColor.Yellow) img.color = new Color(1f, 0.9f, 0.2f);
-        // (기호 이미지가 있다면 여기서 스프라이트도 변경!)
+        else if (c == KSM_GATCHA.CompanyColor.Yellow) img.color = new Color(0.2f, 1f, 0.2f);
 
-        // 2. 크기(size)에 맞춰서 모양(shapeCoords) 자동 세팅!
         if (size == 1)
-            shapeCoords = new Vector2Int[] { new Vector2Int(0, 0) }; // 1칸
+            shapeCoords = new Vector2Int[] { new Vector2Int(0, 0) };
         else if (size == 2)
-            shapeCoords = new Vector2Int[] { new Vector2Int(0, 0), new Vector2Int(1, 0) }; // 2칸 일자
+            shapeCoords = new Vector2Int[] { new Vector2Int(0, 0), new Vector2Int(1, 0) };
         else if (size == 3)
-            shapeCoords = new Vector2Int[] { new Vector2Int(0, 0), new Vector2Int(1, 0), new Vector2Int(0, 1) }; // 3칸 ㄱ자 (원하는 대로 세팅)
+            shapeCoords = new Vector2Int[] { new Vector2Int(0, 0), new Vector2Int(1, 0), new Vector2Int(0, 1) };
 
-        // 3. 변경된 모양과 회전값을 백업해둡니다.
         originalShape = (Vector2Int[])shapeCoords.Clone();
         originalRotation = transform.rotation;
     }
@@ -96,7 +95,8 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
         isDragging = true;
         img.enabled = false;
 
-        previewGhost = gridManager.CreateModularPreview(shapeCoords, blockPrefab, invalidTint);
+        // 🌟 [수정됨] 유령을 만들 때 프리팹 2개를 모두 전달합니다!
+        previewGhost = gridManager.CreateModularPreview(shapeCoords, centerBlockPrefab, sideBlockPrefab, invalidTint);
         ghostRenderers = previewGhost.GetComponentsInChildren<SpriteRenderer>();
 
         OnDrag(eventData);
@@ -134,7 +134,6 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
     {
         isDragging = false;
 
-        // 유령(Ghost) 파괴
         if (previewGhost != null)
         {
             Destroy(previewGhost);
@@ -146,23 +145,18 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
         worldPos.z = 0;
         Vector3Int cellPos = gridManager.GetCellPositionFromMouse(worldPos);
 
-        // 🌟 설치 성공 여부 판단
         if (gridManager.CanPlaceShape(cellPos, shapeCoords))
         {
-            // [설치 성공!] 보드판에 진짜 블록을 깔아줍니다.
-            gridManager.PlaceShape(cellPos, shapeCoords, (int)companyColor, (int)symbolType, blockPrefab);
+            // 🌟 [수정됨] 진짜 블록을 깔 때도 프리팹 2개를 모두 전달합니다!
+            gridManager.PlaceShape(cellPos, shapeCoords, (int)companyColor, (int)symbolType, centerBlockPrefab, sideBlockPrefab);
 
             if (InventoryManager.Instance != null) InventoryManager.Instance.OnBlockUsed();
 
-            // 🌟 성공했을 때만 나 자신을 영원히 파괴합니다! 
             Destroy(gameObject);
         }
         else
         {
-            // [설치 실패!] 원래 모양으로 복구합니다.
             ResetToOriginalState();
-
-            // 🌟 인벤토리에 숨어있던 내 그림을 다시 켭니다. (위치는 Layout Group이 원래 자리에 잘 잡아두고 있습니다)
             img.enabled = true;
         }
     }

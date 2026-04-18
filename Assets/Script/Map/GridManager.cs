@@ -514,51 +514,51 @@ public class GridManager : MonoBehaviour
     /// <returns>배치 가능하면 true</returns>
     public bool CanPlaceShape(Vector3Int startCell, Vector2Int[] shapeCoords)
     {
-       // Next Day 시퀀스 진행 중이면 placement-eligibility 자체를 거부 (블럭 소진 방지)
-    if (PowerManager.Instance != null && PowerManager.Instance.IsAnimating) return false;
+        // Next Day 시퀀스 진행 중이면 placement-eligibility 자체를 거부 (블럭 소진 방지)
+        if (PowerManager.Instance != null && PowerManager.Instance.IsAnimating) return false;
 
-    // 🌟 8방향(상하좌우 + 대각선) 검사를 위한 방향 배열
-    Vector2Int[] directions = { 
+        // 🌟 8방향(상하좌우 + 대각선) 검사를 위한 방향 배열
+        Vector2Int[] directions = {
         Vector2Int.up, Vector2Int.down, Vector2Int.left, Vector2Int.right,
         new Vector2Int(1, 1), new Vector2Int(1, -1),
         new Vector2Int(-1, 1), new Vector2Int(-1, -1)
     };
 
-    foreach (var offset in shapeCoords)
-    {
-        Vector2Int arrayIdx = TileToArrayIndex(startCell.x + offset.x, startCell.y + offset.y);
-
-        // 1. 격자 밖으로 나가는지 검사
-        if (arrayIdx.x < 0 || arrayIdx.x >= width || arrayIdx.y < 0 || arrayIdx.y >= height) return false;
-
-        // 2. 놓으려는 자리에 이미 블럭이 있는지 검사
-        if (boardData[arrayIdx.x, arrayIdx.y] != null && boardData[arrayIdx.x, arrayIdx.y].attribute.colorID > 0) return false;
-
-        // 🌟 3. 주변 8방향에 '완성된 발전소'가 있는지 검사
-        foreach (Vector2Int dir in directions)
+        foreach (var offset in shapeCoords)
         {
-            // 방금 구한 arrayIdx(배열 인덱스)를 기준으로 주변 칸 탐색
-            int neighborX = arrayIdx.x + dir.x;
-            int neighborY = arrayIdx.y + dir.y;
+            Vector2Int arrayIdx = TileToArrayIndex(startCell.x + offset.x, startCell.y + offset.y);
 
-            // 이웃 칸이 배열 범위 안에 있는지 안전 검사
-            if (neighborX >= 0 && neighborX < width && neighborY >= 0 && neighborY < height)
+            // 1. 격자 밖으로 나가는지 검사
+            if (arrayIdx.x < 0 || arrayIdx.x >= width || arrayIdx.y < 0 || arrayIdx.y >= height) return false;
+
+            // 2. 놓으려는 자리에 이미 블럭이 있는지 검사
+            if (boardData[arrayIdx.x, arrayIdx.y] != null && boardData[arrayIdx.x, arrayIdx.y].attribute.colorID > 0) return false;
+
+            // 🌟 3. 주변 8방향에 '완성된 발전소'가 있는지 검사
+            foreach (Vector2Int dir in directions)
             {
-                BlockData neighborCell = boardData[neighborX, neighborY];
+                // 방금 구한 arrayIdx(배열 인덱스)를 기준으로 주변 칸 탐색
+                int neighborX = arrayIdx.x + dir.x;
+                int neighborY = arrayIdx.y + dir.y;
 
-                // 이웃 칸에 블럭이 있고, 그 블럭이 그룹(isGrouped)에 속해 있다면 설치 불가!
-                if (neighborCell != null && neighborCell.isGrouped)
+                // 이웃 칸이 배열 범위 안에 있는지 안전 검사
+                if (neighborX >= 0 && neighborX < width && neighborY >= 0 && neighborY < height)
                 {
-                    // (선택) 디버그 로그가 필요하시면 아래 주석을 푸세요
-                    // Debug.Log($"<color=red>설치 불가:</color> ({neighborX}, {neighborY}) 위치의 기존 발전소와 인접해 있습니다.");
-                    return false; 
+                    BlockData neighborCell = boardData[neighborX, neighborY];
+
+                    // 이웃 칸에 블럭이 있고, 그 블럭이 그룹(isGrouped)에 속해 있다면 설치 불가!
+                    if (neighborCell != null && neighborCell.isGrouped)
+                    {
+                        // (선택) 디버그 로그가 필요하시면 아래 주석을 푸세요
+                        // Debug.Log($"<color=red>설치 불가:</color> ({neighborX}, {neighborY}) 위치의 기존 발전소와 인접해 있습니다.");
+                        return false;
+                    }
                 }
             }
         }
-    }
-    
-    // 모든 조건을 무사히 통과하면 설치 허락!
-    return true;
+
+        // 모든 조건을 무사히 통과하면 설치 허락!
+        return true;
     }
 
     /// <summary>
@@ -570,7 +570,7 @@ public class GridManager : MonoBehaviour
     /// <param name="colorID">색상 ID</param>
     /// <param name="shapeID">기호 ID</param>
     /// <param name="prefab">생성할 프리팹</param>
-    public void PlaceShape(Vector3Int startCell, Vector2Int[] shapeCoords, int colorID, int shapeID, GameObject prefab)
+    public void PlaceShape(Vector3Int startCell, Vector2Int[] shapeCoords, int colorID, int shapeID, GameObject centerPrefab, GameObject sidePrefab)
     {
         if (PowerManager.Instance != null && PowerManager.Instance.IsAnimating)
         {
@@ -587,7 +587,12 @@ public class GridManager : MonoBehaviour
             Vector2Int arrayIdx = TileToArrayIndex(tx, ty);
 
             Vector3 cellWorldPos = groundTilemap.GetCellCenterWorld(new Vector3Int(tx, ty, 0));
-            GameObject cellPart = Instantiate(prefab, cellWorldPos, Quaternion.identity);
+
+            // 🌟 [핵심 변경점] 현재 그리는 칸(offset)이 (0,0)이면 중앙 프리팹, 아니면 자투리 프리팹을 선택!
+            GameObject prefabToUse = (offset == Vector2Int.zero) ? centerPrefab : sidePrefab;
+
+            // 선택된 프리팹으로 소환!
+            GameObject cellPart = Instantiate(prefabToUse, cellWorldPos, Quaternion.identity);
             cellPart.transform.SetParent(buildingParent.transform);
 
             boardData[arrayIdx.x, arrayIdx.y] = new BlockData
@@ -1204,7 +1209,7 @@ public class GridManager : MonoBehaviour
     /// <param name="prefab">고스트용 프리팹</param>
     /// <param name="tint">고스트 색상</param>
     /// <returns>고스트 부모 오브젝트</returns>
-    public GameObject CreateModularPreview(Vector2Int[] shapeCoords, GameObject prefab, Color tint)
+    public GameObject CreateModularPreview(Vector2Int[] shapeCoords, GameObject centerPrefab, GameObject sidePrefab, Color tint)
     {
         GameObject parent = new GameObject("ModularPreviewGhost");
         parent.transform.position = Vector3.zero;
@@ -1212,7 +1217,11 @@ public class GridManager : MonoBehaviour
         foreach (Vector2Int offset in shapeCoords)
         {
             Vector3 localPos = groundTilemap.layoutGrid.CellToLocal((Vector3Int)offset);
-            GameObject part = Instantiate(prefab, localPos, Quaternion.identity);
+
+            // 🌟 [핵심 변경점] 유령을 그릴 때도 중앙과 자투리를 구분!
+            GameObject prefabToUse = (offset == Vector2Int.zero) ? centerPrefab : sidePrefab;
+
+            GameObject part = Instantiate(prefabToUse, localPos, Quaternion.identity);
             part.transform.SetParent(parent.transform, false);
 
             SpriteRenderer sr = part.GetComponent<SpriteRenderer>();
@@ -1225,7 +1234,6 @@ public class GridManager : MonoBehaviour
 
         return parent;
     }
-
     /// <summary>
     /// 상태 변경 이벤트 발행.
     /// </summary>
