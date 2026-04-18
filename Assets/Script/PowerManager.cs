@@ -42,6 +42,8 @@ public class GroupInfo
     public int finalShape;
     public int formationMultiplier;
     public float groupPower;
+    public float appliedExchangeRatio;
+    public float estimatedMoneyGen;
 
     // 시각 시퀀서가 재계산 없이 표시할 수 있도록 중간값/멤버 캐시
     public int baseProduction;
@@ -203,6 +205,9 @@ public class PowerManager : MonoBehaviour
         float colorMultiplier = 1f + (maxColorCount - restColorCount) * 0.2f;
 
         float finalPower = (baseProduction + uniquePartsCount) * completionMultiplier * colorMultiplier;
+        float baseRatio = ResourceManager.Instance != null ? ResourceManager.Instance.ExchangeRatio : 10f;
+        float currentRatio = baseRatio;
+        float estimatedMoney = finalPower / currentRatio;
 
         // --- 정보 저장 ---
         int dominantColor = colorCounts.OrderByDescending(x => x.Value).First().Key;
@@ -210,7 +215,7 @@ public class PowerManager : MonoBehaviour
         Color dominantRealColor = Color.white;
         if (dominantColor == 1) dominantRealColor = new Color(1f, 0.2f, 0.2f);
         else if (dominantColor == 2) dominantRealColor = new Color(0.2f, 0.4f, 1f);
-        else if (dominantColor == 3) dominantRealColor = new Color(1f, 0.9f, 0.2f);
+        else if (dominantColor == 3) dominantRealColor = new Color(0.2f, 1f, 0.2f);
 
         List<PlacedBlockVisual> currentGroupVisuals = new List<PlacedBlockVisual>();
 
@@ -239,6 +244,8 @@ public class PowerManager : MonoBehaviour
             finalColor = dominantColor,
             formationMultiplier = shapeBonus,
             groupPower = finalPower,
+            appliedExchangeRatio = currentRatio,
+            estimatedMoneyGen = estimatedMoney,
             baseProduction = baseProduction,
             uniqueParts = uniquePartsCount,
             completionMultiplier = completionMultiplier,
