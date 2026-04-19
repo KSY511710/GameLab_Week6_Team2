@@ -617,10 +617,7 @@ public class GridManager : MonoBehaviour
     /// <param name="specialDef">특수 블럭 정의. 일반 블럭은 null.</param>
     public void PlaceShape(Vector3Int startCell, Vector2Int[] shapeCoords, int colorID, int shapeID, GameObject centerPrefab, GameObject sidePrefab, SpecialBlockDefinition specialDef = null)
     {
-        if (PowerManager.Instance != null && PowerManager.Instance.IsAnimating)
-        {
-            return;
-        }
+        if (PowerManager.Instance != null && PowerManager.Instance.IsAnimating) return;
 
         GameObject buildingParent = new GameObject(specialDef != null ? $"Special_{specialDef.id}" : "MultiCell_Building");
         buildingParent.transform.position = groundTilemap.GetCellCenterWorld(startCell);
@@ -633,22 +630,30 @@ public class GridManager : MonoBehaviour
             int tx = startCell.x + offset.x;
             int ty = startCell.y + offset.y;
             Vector2Int arrayIdx = TileToArrayIndex(tx, ty);
-
             Vector3 cellWorldPos = groundTilemap.GetCellCenterWorld(new Vector3Int(tx, ty, 0));
 
-            // 🌟 1. 일단 무조건 모든 칸에 자투리(Side) 바닥을 깝니다!
+            // 1. 자투리(Side) 바닥 생성 (레이어 변경 제거)
             GameObject baseCell = Instantiate(sidePrefab, cellWorldPos, Quaternion.identity);
             baseCell.transform.SetParent(buildingParent.transform);
 
-            // 🌟 2. 마우스가 있는 중심(0,0) 칸이라면, 그 위에 중앙(Center) 프리팹을 추가로 띄웁니다!
+            // 🌟 [스마트 아웃라인 로직] 바닥 프리팹의 4방향 선을 찾아서 이웃이 없는 곳만 켭니다!
+            Transform lineU = baseCell.transform.Find("Line_U");
+            Transform lineD = baseCell.transform.Find("Line_D");
+            Transform lineL = baseCell.transform.Find("Line_L");
+            Transform lineR = baseCell.transform.Find("Line_R");
+
+            if (lineU != null) lineU.gameObject.SetActive(!HasNeighborInShape(shapeCoords, offset + Vector2Int.up));
+            if (lineD != null) lineD.gameObject.SetActive(!HasNeighborInShape(shapeCoords, offset + Vector2Int.down));
+            if (lineL != null) lineL.gameObject.SetActive(!HasNeighborInShape(shapeCoords, offset + Vector2Int.left));
+            if (lineR != null) lineR.gameObject.SetActive(!HasNeighborInShape(shapeCoords, offset + Vector2Int.right));
+
+            // 2. 중심(0,0) 칸에 중앙(Center) 프리팹 덧씌우기
             if (offset == Vector2Int.zero)
             {
-                GameObject centerOverlay = Instantiate(centerPrefab, cellWorldPos, Quaternion.identity);
+                // Z축만 -0.1f로 당겨서 깜빡임 방지
+                Vector3 overlayPos = new Vector3(cellWorldPos.x, cellWorldPos.y, -0.1f);
+                GameObject centerOverlay = Instantiate(centerPrefab, overlayPos, Quaternion.identity);
                 centerOverlay.transform.SetParent(buildingParent.transform);
-
-                // (안전장치) 바닥이랑 겹쳐서 깜빡거리지 않게 Z축을 살짝 앞(-0.1)으로 당겨줍니다.
-                Vector3 localPos = centerOverlay.transform.localPosition;
-                centerOverlay.transform.localPosition = new Vector3(localPos.x, localPos.y, -0.1f);
             }
 
             boardData[arrayIdx.x, arrayIdx.y] = new BlockData
@@ -658,14 +663,13 @@ public class GridManager : MonoBehaviour
                     : new BlockAttribute(colorID, shapeID),
                 isGrouped = false,
                 groupID = 0,
-                blockObject = baseCell // 데이터상으로는 바닥(baseCell)을 연결해 둡니다.
+                blockObject = baseCell
             };
 
             buildingObjects[arrayIdx.x, arrayIdx.y] = buildingParent;
             footprint?.Add(arrayIdx);
         }
 
-        // 특수 블럭 등록 등 나머지 로직은 그대로 유지!
         if (specialDef != null)
         {
             int zoneId = ZoneServiceLocator.Current.GetZoneIdFromCell(anchorArray);
@@ -1305,31 +1309,40 @@ public class GridManager : MonoBehaviour
         {
             Vector3 localPos = groundTilemap.layoutGrid.CellToLocal((Vector3Int)offset);
 
-            // 🌟 1. 모든 칸에 자투리(Side) 유령 생성
+            // 1. 모든 칸에 자투리(Side) 유령 생성
             GameObject baseGhost = Instantiate(sidePrefab, localPos, Quaternion.identity);
             baseGhost.transform.SetParent(parent.transform, false);
 
-            SpriteRenderer sr = baseGhost.GetComponent<SpriteRenderer>();
-            if (sr != null)
+            // 🌟 유령 색상 입히기 (레이어 변경 제거)
+            SpriteRenderer[] baseSrs = baseGhost.GetComponentsInChildren<SpriteRenderer>(true);
+            foreach (var sr in baseSrs)
             {
                 sr.color = tint;
-                sr.sortingOrder = 10;
             }
 
-            // 🌟 2. 중심(0,0) 칸에 중앙(Center) 유령 추가 생성
+            // 🌟 [스마트 아웃라인 로직]
+            Transform lineU = baseGhost.transform.Find("Line_U");
+            Transform lineD = baseGhost.transform.Find("Line_D");
+            Transform lineL = baseGhost.transform.Find("Line_L");
+            Transform lineR = baseGhost.transform.Find("Line_R");
+
+            if (lineU != null) lineU.gameObject.SetActive(!HasNeighborInShape(shapeCoords, offset + Vector2Int.up));
+            if (lineD != null) lineD.gameObject.SetActive(!HasNeighborInShape(shapeCoords, offset + Vector2Int.down));
+            if (lineL != null) lineL.gameObject.SetActive(!HasNeighborInShape(shapeCoords, offset + Vector2Int.left));
+            if (lineR != null) lineR.gameObject.SetActive(!HasNeighborInShape(shapeCoords, offset + Vector2Int.right));
+
+            // 2. 중심(0,0) 칸에 중앙(Center) 유령 생성
             if (offset == Vector2Int.zero)
             {
-                // Z축을 살짝 당겨서 생성합니다 (-0.1f)
                 Vector3 overlayPos = new Vector3(localPos.x, localPos.y, -0.1f);
                 GameObject centerGhost = Instantiate(centerPrefab, overlayPos, Quaternion.identity);
+                centerGhost.name = "CenterPiece";
                 centerGhost.transform.SetParent(parent.transform, false);
 
                 SpriteRenderer centerSr = centerGhost.GetComponent<SpriteRenderer>();
                 if (centerSr != null)
                 {
                     centerSr.color = tint;
-                    // 🌟 바닥 유령(10)보다 레이어를 높게(11) 설정해서 완벽하게 위에 보이게 합니다.
-                    centerSr.sortingOrder = 11;
                 }
             }
         }
@@ -1367,5 +1380,13 @@ public class GridManager : MonoBehaviour
         }
 
         return quotient;
+    }
+    private bool HasNeighborInShape(Vector2Int[] shapeCoords, Vector2Int target)
+    {
+        foreach (Vector2Int coord in shapeCoords)
+        {
+            if (coord == target) return true;
+        }
+        return false;
     }
 }
