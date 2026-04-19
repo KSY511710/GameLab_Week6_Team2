@@ -3235,6 +3235,118 @@ PrefabInstance:
       propertyPath: groundTilemap
       value: 
       objectReference: {fileID: 1373344025}
+    - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
+      propertyPath: maxEastExpandCount
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
+      propertyPath: maxWestExpandCount
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
+      propertyPath: previewFillColor.a
+      value: 0.18039216
+      objectReference: {fileID: 0}
+    - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
+      propertyPath: previewFillColor.b
+      value: 0.75
+      objectReference: {fileID: 0}
+    - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
+      propertyPath: previewFillColor.g
+      value: 0.75
+      objectReference: {fileID: 0}
+    - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
+      propertyPath: previewFillColor.r
+      value: 0.75
+      objectReference: {fileID: 0}
+    - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
+      propertyPath: ksmHoverPreviewTile
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
+      propertyPath: maxNorthExpandCount
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
+      propertyPath: maxSouthExpandCount
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
+      propertyPath: previewGuideColor.a
+      value: 0.38039216
+      objectReference: {fileID: 0}
+    - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
+      propertyPath: ksmPassivePreviewTile
+      value: 
+      objectReference: {fileID: 11400000, guid: baff5a00c86cb8844a3f33a08adb7ed1, type: 2}
+    - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
+      propertyPath: ksmHoverOverlayColor.a
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
+      propertyPath: ksmHoverOverlayColor.b
+      value: 0.34
+      objectReference: {fileID: 0}
+    - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
+      propertyPath: ksmHoverOverlayColor.g
+      value: 0.34
+      objectReference: {fileID: 0}
+    - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
+      propertyPath: ksmHoverOverlayColor.r
+      value: 0.34
+      objectReference: {fileID: 0}
+    - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
+      propertyPath: ksmLockedOverlayColor.a
+      value: 0.9607843
+      objectReference: {fileID: 0}
+    - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
+      propertyPath: ksmLockedOverlayColor.b
+      value: 0.18
+      objectReference: {fileID: 0}
+    - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
+      propertyPath: ksmLockedOverlayColor.g
+      value: 0.18
+      objectReference: {fileID: 0}
+    - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
+      propertyPath: ksmLockedOverlayColor.r
+      value: 0.18
+      objectReference: {fileID: 0}
+    - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
+      propertyPath: ksmHoverBorderPulseSpeed
+      value: 5.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
+      propertyPath: ksmHoverBorderPulseMinColor.a
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
+      propertyPath: ksmHoverBorderPulseMinColor.b
+      value: 0.28
+      objectReference: {fileID: 0}
+    - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
+      propertyPath: ksmHoverBorderPulseMinColor.g
+      value: 0.96
+      objectReference: {fileID: 0}
+    - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
+      propertyPath: ksmHoverBorderPulseMinColor.r
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
+      propertyPath: ksmHoverOverlayUnaffordableColor.a
+      value: 0.9490196
+      objectReference: {fileID: 0}
+    - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
+      propertyPath: ksmHoverOverlayUnaffordableColor.b
+      value: 0.08
+      objectReference: {fileID: 0}
+    - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
+      propertyPath: ksmHoverOverlayUnaffordableColor.g
+      value: 0.78
+      objectReference: {fileID: 0}
+    - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
+      propertyPath: ksmHoverOverlayUnaffordableColor.r
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
