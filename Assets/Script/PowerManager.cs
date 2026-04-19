@@ -95,6 +95,7 @@ public class PowerManager : MonoBehaviour
 
     /// <summary>현재 보드의 라이브 총 발전량이 변경되었을 때 발화. Skip 가용성 재평가 등에 사용.</summary>
     public static event Action OnTotalPowerChanged;
+    public GachaConnector GachaConnector;
 
     void Awake()
     {
@@ -467,6 +468,7 @@ public class PowerManager : MonoBehaviour
                 CommitYesterdayProduction(totalPower);
                 EffectRuntime.Instance.NotifyDailySettle();
                 if (ResourceManager.Instance != null) ResourceManager.Instance.ProcessNextDay();
+                GachaConnector.OnOffShop(true);
                 SetAnimating(false);
             });
         }
@@ -475,6 +477,7 @@ public class PowerManager : MonoBehaviour
             CommitYesterdayProduction(totalPower);
             EffectRuntime.Instance.NotifyDailySettle();
             if (ResourceManager.Instance != null) ResourceManager.Instance.ProcessNextDay();
+            GachaConnector.OnOffShop(true);
         }
     }
 }
