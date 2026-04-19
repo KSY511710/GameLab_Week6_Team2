@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7d01b16d7cebedb46a77a7b4d86a01ac, type: 3}
+  m_Name: SpecialBlock_test
+  m_EditorClassIdentifier: Assembly-CSharp::Special.Data.SpecialBlockDefinition
+  id: test
+  displayName: Test
+  icon: {fileID: -760248212612917335, guid: e652722985d89634e9c773ddc7e7fda0, type: 3}
+  shapeCoords:
+  - {x: 0, y: 0}
+  allowRotation: 1
+  colorBinding: 2
+  includedPrimaries: 0
+  offPaletteColor: {r: 0, g: 0, b: 0, a: 1}
+  uniqueShapeId: 1000
+  role: 1
+  maxPerGame: 1
+  maxPerZone: 1
+  effectAssets:
+  - {fileID: 11400000, guid: 1041cd0a606f5dd46b7c5ca1cbd053cc, type: 2}
+  customEffectPrefabs: []

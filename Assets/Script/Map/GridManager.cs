@@ -1,6 +1,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Special.Data;
+using Special.Runtime;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
@@ -304,6 +306,20 @@ public class GridManager : MonoBehaviour
     }
 
     /// <summary>
+    /// 배열 인덱스(0..W-1, 0..H-1)를 월드 셀 중심 좌표로 변환한다.
+    /// 특수 블럭 시각화 모듈(영역 오버레이 등) 이 보드 내부 오프셋을 모르고도
+    /// 월드 좌표를 받을 수 있도록 노출한 헬퍼.
+    /// </summary>
+    /// <param name="arrayIdx">배열 인덱스</param>
+    /// <returns>월드 좌표상의 셀 중심</returns>
+    public Vector3 ArrayIndexToWorldCenter(Vector2Int arrayIdx)
+    {
+        if (groundTilemap == null) return Vector3.zero;
+        Vector3Int worldCell = new Vector3Int(arrayIdx.x + currentOffset.x, arrayIdx.y + currentOffset.y, 0);
+        return groundTilemap.GetCellCenterWorld(worldCell);
+    }
+
+    /// <summary>
     /// sourceRegion의 인접 방향에 있는 targetRegion을 계산한다.
     /// </summary>
     /// <param name="sourceRegion">기준 구역</param>
@@ -504,18 +520,26 @@ public class GridManager : MonoBehaviour
 
     /// <summary>
     /// shape를 현재 셀에 배치할 수 있는지 검사한다.
-    /// 
+    ///
     /// 기존과 차이점:
     /// - bounding rectangle 안에 있는지만 보는 게 아니라
     /// - 해당 셀이 실제로 열린 구역에 속하는지 본다.
+    ///
+    /// 특수 블럭(<paramref name="specialDef"/>)이 들어오면 추가로
+    /// - Independent role 은 그룹 인접 금지 규칙을 우회한다 (그룹화 자체에 참여하지 않으므로 인접 제약이 의미 없음).
+    /// - SpecialBlockRegistry 의 게임/구역 한도 검사를 통과해야 한다.
     /// </summary>
     /// <param name="startCell">배치 시작 셀</param>
     /// <param name="shapeCoords">shape 좌표 배열</param>
+    /// <param name="specialDef">특수 블럭 정의. 일반 블럭은 null.</param>
     /// <returns>배치 가능하면 true</returns>
-    public bool CanPlaceShape(Vector3Int startCell, Vector2Int[] shapeCoords)
+    public bool CanPlaceShape(Vector3Int startCell, Vector2Int[] shapeCoords, SpecialBlockDefinition specialDef = null)
     {
         // Next Day 시퀀스 진행 중이면 placement-eligibility 자체를 거부 (블럭 소진 방지)
         if (PowerManager.Instance != null && PowerManager.Instance.IsAnimating) return false;
+
+        // Independent 특수 블럭은 그룹 인접 금지 규칙을 적용하지 않는다.
+        bool skipAdjacencyCheck = specialDef != null && specialDef.role == SpecialBlockRole.Independent;
 
         // 🌟 8방향(상하좌우 + 대각선) 검사를 위한 방향 배열
         Vector2Int[] directions = {
@@ -531,8 +555,14 @@ public class GridManager : MonoBehaviour
             // 1. 격자 밖으로 나가는지 검사
             if (arrayIdx.x < 0 || arrayIdx.x >= width || arrayIdx.y < 0 || arrayIdx.y >= height) return false;
 
+            // 1-1. 열린 구역(opened region) 안에 들어와야 한다. develop 의 region 시스템과 정합성 유지.
+            Vector3Int worldCellForCheck = new Vector3Int(startCell.x + offset.x, startCell.y + offset.y, 0);
+            if (!IsWorldCellUnlocked(worldCellForCheck)) return false;
+
             // 2. 놓으려는 자리에 이미 블럭이 있는지 검사
             if (boardData[arrayIdx.x, arrayIdx.y] != null && boardData[arrayIdx.x, arrayIdx.y].attribute.colorID > 0) return false;
+
+            if (skipAdjacencyCheck) continue;
 
             // 🌟 3. 주변 8방향에 '완성된 발전소'가 있는지 검사
             foreach (Vector2Int dir in directions)
@@ -557,6 +587,14 @@ public class GridManager : MonoBehaviour
             }
         }
 
+        // 특수 블럭은 게임 전체/구역 단위 설치 한도 검사 (Registry 위임).
+        if (specialDef != null)
+        {
+            Vector2Int anchorArray = TileToArrayIndex(startCell.x, startCell.y);
+            int zoneId = ZoneServiceLocator.Current.GetZoneIdFromCell(anchorArray);
+            if (!SpecialBlockRegistry.Instance.CanPlace(specialDef, zoneId)) return false;
+        }
+
         // 모든 조건을 무사히 통과하면 설치 허락!
         return true;
     }
@@ -564,21 +602,31 @@ public class GridManager : MonoBehaviour
     /// <summary>
     /// shape를 실제로 보드에 배치한다.
     /// 기존 배치 흐름 유지.
+    ///
+    /// 특수 블럭(<paramref name="specialDef"/>) 이 비-null 이면:
+    /// - footprint 를 모아 SpecialBlockRegistry 에 등록 (PowerManager 계산 전에 해야 첫 정산부터 효과 반영).
+    /// - BlockAttribute 에 specialDef 참조를 함께 저장해 PowerManager 의 그룹/효과 훅이 인지하도록 한다.
+    /// 일반 블럭 경로는 develop 코드와 동일하게 동작한다.
     /// </summary>
     /// <param name="startCell">배치 시작 셀</param>
     /// <param name="shapeCoords">shape 좌표 배열</param>
     /// <param name="colorID">색상 ID</param>
     /// <param name="shapeID">기호 ID</param>
-    /// <param name="prefab">생성할 프리팹</param>
-    public void PlaceShape(Vector3Int startCell, Vector2Int[] shapeCoords, int colorID, int shapeID, GameObject centerPrefab, GameObject sidePrefab)
+    /// <param name="centerPrefab">중앙 칸 프리팹</param>
+    /// <param name="sidePrefab">자투리 칸 프리팹</param>
+    /// <param name="specialDef">특수 블럭 정의. 일반 블럭은 null.</param>
+    public void PlaceShape(Vector3Int startCell, Vector2Int[] shapeCoords, int colorID, int shapeID, GameObject centerPrefab, GameObject sidePrefab, SpecialBlockDefinition specialDef = null)
     {
         if (PowerManager.Instance != null && PowerManager.Instance.IsAnimating)
         {
             return;
         }
 
-        GameObject buildingParent = new GameObject("MultiCell_Building");
+        GameObject buildingParent = new GameObject(specialDef != null ? $"Special_{specialDef.id}" : "MultiCell_Building");
         buildingParent.transform.position = groundTilemap.GetCellCenterWorld(startCell);
+
+        List<Vector2Int> footprint = specialDef != null ? new List<Vector2Int>(shapeCoords.Length) : null;
+        Vector2Int anchorArray = TileToArrayIndex(startCell.x, startCell.y);
 
         foreach (Vector2Int offset in shapeCoords)
         {
@@ -597,13 +645,24 @@ public class GridManager : MonoBehaviour
 
             boardData[arrayIdx.x, arrayIdx.y] = new BlockData
             {
-                attribute = new BlockAttribute(colorID, shapeID),
+                attribute = specialDef != null
+                    ? new BlockAttribute(colorID, shapeID, specialDef)
+                    : new BlockAttribute(colorID, shapeID),
                 isGrouped = false,
                 groupID = 0,
                 blockObject = cellPart
             };
 
             buildingObjects[arrayIdx.x, arrayIdx.y] = buildingParent;
+            footprint?.Add(arrayIdx);
+        }
+
+        // 특수 블럭이면 Registry 에 등록 → 효과 Activate. PowerManager 계산 전에 등록해야
+        // Global/Zone 스코프 효과가 첫 정산부터 반영된다.
+        if (specialDef != null)
+        {
+            int zoneId = ZoneServiceLocator.Current.GetZoneIdFromCell(anchorArray);
+            SpecialBlockRegistry.Instance.RegisterPlacement(specialDef, anchorArray, footprint, zoneId);
         }
 
         if (PowerManager.Instance != null)
@@ -612,6 +671,24 @@ public class GridManager : MonoBehaviour
             PowerManager.Instance.CalculateTotalPower(boardData, width, height);
             PowerManager.Instance.UpdateAllOutlines(boardData, width, height);
         }
+    }
+
+    /// <summary>
+    /// 효과(Effect) 가 스코프 내 셀을 조회할 때 사용하는 read-only 헬퍼. 범위 밖이면 null.
+    /// </summary>
+    public BlockData GetBlockAtArrayIndex(Vector2Int arrayIdx)
+    {
+        if (arrayIdx.x < 0 || arrayIdx.x >= width || arrayIdx.y < 0 || arrayIdx.y >= height) return null;
+        return boardData[arrayIdx.x, arrayIdx.y];
+    }
+
+    /// <summary>
+    /// 효과 스코프 평가용. 셀이 비어 있거나(=null) 색상 없는 placeholder 인지 판정.
+    /// </summary>
+    public bool IsEmptyCell(Vector2Int arrayIdx)
+    {
+        BlockData cell = GetBlockAtArrayIndex(arrayIdx);
+        return cell == null || cell.attribute.colorID <= 0;
     }
 
     /// <summary>
