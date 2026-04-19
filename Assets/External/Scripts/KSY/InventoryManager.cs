@@ -125,4 +125,28 @@ public class InventoryManager : MonoBehaviour
             capacityText.color = IsFull() ? Color.red : Color.white;
         }
     }
+    public void RefreshShopFree()
+    {
+        Debug.Log("새로운 날이 밝았습니다! 상점을 무료로 갱신합니다.");
+        StartCoroutine(RefreshShopRoutine());
+    }
+
+    // 실제 상점을 싹 비우고 채우는 핵심 로직 (공통 사용)
+    private IEnumerator RefreshShopRoutine()
+    {
+        // 현재 슬롯의 모든 블록 파괴
+        foreach (Transform slot in shopSlots)
+        {
+            if (slot.childCount > 0)
+            {
+                Destroy(slot.GetChild(0).gameObject);
+            }
+        }
+
+        // Destroy가 완료될 때까지 한 프레임 대기
+        yield return null;
+
+        // 새로운 블록 채우기
+        RefillNormalBlocks();
+    }
 }

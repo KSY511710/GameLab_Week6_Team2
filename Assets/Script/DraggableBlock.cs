@@ -18,8 +18,8 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
     [Header("Shape Settings")]
     public Vector2Int[] shapeCoords = { new Vector2Int(0, 0) };
 
-    private Color validTint = new Color(0, 1, 0, 0.5f);
-    private Color invalidTint = new Color(1, 0, 0, 0.5f);
+    private Color validTint = new Color(1f, 1f, 1f, 0.5f);
+    private Color invalidTint = new Color(0.2f, 0.2f, 0.2f, 0.7f);
 
     private Vector3 startPos;
     private Vector2Int[] originalShape;
@@ -160,14 +160,13 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
         if (gridManager.CanPlaceShape(cellPos, shapeCoords))
         {
             // 🌟 1. 돈 검사 및 지불 (특수 블록 눈치 볼 필요 없이 무조건 실행!)
-            if (!ResourceManager.Instance.HasCurrency(CurrencyType.Money, placementCost))
+            if (!ResourceManager.Instance.TryPayForBasicDraw())
             {
                 Debug.Log("돈이 부족해서 블록을 설치할 수 없습니다!");
                 ResetToOriginalState();
                 img.enabled = true;
                 return;
             }
-            ResourceManager.Instance.SpendCurrency(CurrencyType.Money, placementCost);
 
             // 2. 블록 설치!
             gridManager.PlaceShape(cellPos, shapeCoords, (int)companyColor, (int)symbolType, centerBlockPrefab, sideBlockPrefab);
