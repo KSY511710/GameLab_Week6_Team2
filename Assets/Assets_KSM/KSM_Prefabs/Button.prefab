@@ -198,7 +198,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 1, g: 0, b: 0, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -277,10 +277,14 @@ MonoBehaviour:
   button: {fileID: 1306449898362786973}
   targetImage: {fileID: 8599804811892656975}
   expandCostText: {fileID: 2223807865743643774}
+  hoverGlowObject: {fileID: 6814430588513731405}
+  hoverGlowImage: {fileID: 8599804811892656975}
   costFormat: $ {0}
   normalColor: {r: 1, g: 1, b: 1, a: 0.95}
   hoverCanExpandColor: {r: 0.9, g: 0.9, b: 0.9, a: 1}
   disabledColor: {r: 0.45, g: 0.45, b: 0.45, a: 0.7}
   blockedColor: {r: 0.35, g: 0.35, b: 0.35, a: 0.6}
+  hoverGlowCanExpandColor: {r: 1, g: 0.95, b: 0.55, a: 0.85}
+  hoverGlowDisabledColor: {r: 0.45, g: 0.45, b: 0.45, a: 0.55}
   costNormalColor: {r: 1, g: 1, b: 1, a: 1}
   costDisabledColor: {r: 0.7, g: 0.7, b: 0.7, a: 0.85}
