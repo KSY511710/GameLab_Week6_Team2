@@ -34,7 +34,7 @@ public class KSM_MapExpandButtonManager : MonoBehaviour
     [SerializeField, Min(0.1f)] private float buttonSizeScale = 1f;
 
     [Tooltip("버튼을 targetRegion보다 조금 더 크게 만들고 싶을 때 추가할 월드 크기(X,Y).")]
-    [SerializeField] private Vector2 buttonExtraWorldSize = new Vector2(1f, 1f);
+    [SerializeField] private Vector2 buttonExtraWorldSize = Vector2.zero;
 
     /// <summary>
     /// 실제 생성된 버튼과,
