@@ -52,7 +52,7 @@ public enum KSM_ExpandResult
 ///   bounding rectangle(boardData / buildingObjects)는 유지한다.
 /// - 열린 구역 안의 셀만 실제 배치 가능하다.
 /// </summary>
-public class GridManager : MonoBehaviour
+public partial class GridManager : MonoBehaviour
 {
     [Header("Board Settings")]
     [Tooltip("초기 시작 구역 한 변 길이. 예: 5면 한 구역은 5 x 5 셀.")]
@@ -617,8 +617,10 @@ public class GridManager : MonoBehaviour
     /// <param name="specialDef">특수 블럭 정의. 일반 블럭은 null.</param>
     public void PlaceShape(Vector3Int startCell, Vector2Int[] shapeCoords, int colorID, int shapeID, GameObject centerPrefab, GameObject sidePrefab, SpecialBlockDefinition specialDef = null)
     {
+        // 애니메이션 중에는 중복 설치 방지
         if (PowerManager.Instance != null && PowerManager.Instance.IsAnimating) return;
 
+        // 블록들의 부모가 될 빈 오브젝트 생성
         GameObject buildingParent = new GameObject(specialDef != null ? $"Special_{specialDef.id}" : "MultiCell_Building");
         buildingParent.transform.position = groundTilemap.GetCellCenterWorld(startCell);
 
@@ -632,30 +634,38 @@ public class GridManager : MonoBehaviour
             Vector2Int arrayIdx = TileToArrayIndex(tx, ty);
             Vector3 cellWorldPos = groundTilemap.GetCellCenterWorld(new Vector3Int(tx, ty, 0));
 
-            // 1. 자투리(Side) 바닥 생성 (레이어 변경 제거)
+            // 🌟 Y축 기준 레이어 정렬 로직 (아래로 갈수록 숫자가 커짐)
+            // 공식: $$sortingBase = \text{Mathf.RoundToInt}(-cellWorldPos.y \times 100)$$
+            int sortingBase = Mathf.RoundToInt(-cellWorldPos.y * 100);
+
+            // 1. 바닥(Side) 블록 생성
             GameObject baseCell = Instantiate(sidePrefab, cellWorldPos, Quaternion.identity);
             baseCell.transform.SetParent(buildingParent.transform);
 
-            // 🌟 [스마트 아웃라인 로직] 바닥 프리팹의 4방향 선을 찾아서 이웃이 없는 곳만 켭니다!
-            Transform lineU = baseCell.transform.Find("Line_U");
-            Transform lineD = baseCell.transform.Find("Line_D");
-            Transform lineL = baseCell.transform.Find("Line_L");
-            Transform lineR = baseCell.transform.Find("Line_R");
+            // 바닥 레이어 설정
+            SpriteRenderer sideSR = baseCell.GetComponent<SpriteRenderer>();
+            if (sideSR != null)
+            {
+                sideSR.sortingOrder = sortingBase;
+            }
 
-            if (lineU != null) lineU.gameObject.SetActive(!HasNeighborInShape(shapeCoords, offset + Vector2Int.up));
-            if (lineD != null) lineD.gameObject.SetActive(!HasNeighborInShape(shapeCoords, offset + Vector2Int.down));
-            if (lineL != null) lineL.gameObject.SetActive(!HasNeighborInShape(shapeCoords, offset + Vector2Int.left));
-            if (lineR != null) lineR.gameObject.SetActive(!HasNeighborInShape(shapeCoords, offset + Vector2Int.right));
-
-            // 2. 중심(0,0) 칸에 중앙(Center) 프리팹 덧씌우기
+            // 2. 중앙(Center) 블록 생성 (모양의 중심점인 0,0 좌표에만 생성)
             if (offset == Vector2Int.zero)
             {
-                // Z축만 -0.1f로 당겨서 깜빡임 방지
+                // 중앙 프리팹이 바닥보다 살짝 앞에 보이도록 Z축 및 레이어 보정
                 Vector3 overlayPos = new Vector3(cellWorldPos.x, cellWorldPos.y, -0.1f);
                 GameObject centerOverlay = Instantiate(centerPrefab, overlayPos, Quaternion.identity);
                 centerOverlay.transform.SetParent(buildingParent.transform);
+
+                // 중앙 아이콘은 바닥보다 무조건 앞에 오도록 +1 설정
+                SpriteRenderer centerSR = centerOverlay.GetComponentInChildren<SpriteRenderer>();
+                if (centerSR != null)
+                {
+                    centerSR.sortingOrder = sortingBase + 1;
+                }
             }
 
+            // 데이터 기록
             boardData[arrayIdx.x, arrayIdx.y] = new BlockData
             {
                 attribute = specialDef != null
@@ -670,12 +680,14 @@ public class GridManager : MonoBehaviour
             footprint?.Add(arrayIdx);
         }
 
+        // 특수 블록 등록 로직 (있는 경우)
         if (specialDef != null)
         {
             int zoneId = ZoneServiceLocator.Current.GetZoneIdFromCell(anchorArray);
             SpecialBlockRegistry.Instance.RegisterPlacement(specialDef, anchorArray, footprint, zoneId);
         }
 
+        // 🌟 설치 직후 그룹 체크 및 외곽선 업데이트 (여기서 그룹 테두리가 그려집니다)
         if (PowerManager.Instance != null)
         {
             PowerManager.Instance.CheckAndFormGroups(boardData, width, height);
@@ -1306,40 +1318,30 @@ public class GridManager : MonoBehaviour
         {
             Vector3 localPos = groundTilemap.layoutGrid.CellToLocal((Vector3Int)offset);
 
-            // 1. 모든 칸에 자투리(Side) 유령 생성
+            // 1. 바닥(Side) 유령 생성
             GameObject baseGhost = Instantiate(sidePrefab, localPos, Quaternion.identity);
             baseGhost.transform.SetParent(parent.transform, false);
 
-            // 🌟 유령 색상 입히기 (레이어 변경 제거)
+            // 모든 자식(이미지)에 틴트값과 높은 레이어 순서 적용
             SpriteRenderer[] baseSrs = baseGhost.GetComponentsInChildren<SpriteRenderer>(true);
             foreach (var sr in baseSrs)
             {
                 sr.color = tint;
+                sr.sortingOrder = 5000; // 유령은 지형보다 항상 위에 보이게 설정
             }
 
-            // 🌟 [스마트 아웃라인 로직]
-            Transform lineU = baseGhost.transform.Find("Line_U");
-            Transform lineD = baseGhost.transform.Find("Line_D");
-            Transform lineL = baseGhost.transform.Find("Line_L");
-            Transform lineR = baseGhost.transform.Find("Line_R");
-
-            if (lineU != null) lineU.gameObject.SetActive(!HasNeighborInShape(shapeCoords, offset + Vector2Int.up));
-            if (lineD != null) lineD.gameObject.SetActive(!HasNeighborInShape(shapeCoords, offset + Vector2Int.down));
-            if (lineL != null) lineL.gameObject.SetActive(!HasNeighborInShape(shapeCoords, offset + Vector2Int.left));
-            if (lineR != null) lineR.gameObject.SetActive(!HasNeighborInShape(shapeCoords, offset + Vector2Int.right));
-
-            // 2. 중심(0,0) 칸에 중앙(Center) 유령 생성
+            // 2. 중앙(Center) 유령 생성
             if (offset == Vector2Int.zero)
             {
                 Vector3 overlayPos = new Vector3(localPos.x, localPos.y, -0.1f);
                 GameObject centerGhost = Instantiate(centerPrefab, overlayPos, Quaternion.identity);
-                centerGhost.name = "CenterPiece";
                 centerGhost.transform.SetParent(parent.transform, false);
 
-                SpriteRenderer centerSr = centerGhost.GetComponent<SpriteRenderer>();
+                SpriteRenderer centerSr = centerGhost.GetComponentInChildren<SpriteRenderer>();
                 if (centerSr != null)
                 {
                     centerSr.color = tint;
+                    centerSr.sortingOrder = 5001; // 중앙 아이콘은 유령 바닥보다 +1
                 }
             }
         }

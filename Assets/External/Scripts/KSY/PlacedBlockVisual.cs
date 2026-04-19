@@ -18,10 +18,7 @@ public class PlacedBlockVisual : MonoBehaviour
 
     private List<PlacedBlockVisual> myGroupMembers;
 
-    [Header("외곽선 설정")]
-    public Color outlineColor = Color.black;
-    public float outlineThickness = 0.05f; // 테두리 두께 조절
-    public Material outlineMaterial;
+    // 🗑️ [삭제] 외곽선을 코드로 만들 때 쓰던 변수들 (color, thickness, material 등) 전부 삭제!
 
     [Header("Spotlight FX")]
     [Tooltip("Focused 상태에서 블럭이 커지는 비율. 크기 대비로 주목도를 더한다.")]
@@ -33,13 +30,11 @@ public class PlacedBlockVisual : MonoBehaviour
     [Tooltip("플래시 펄스 피크에서 적용되는 추가 크기 배율. Focused 크기 위에 곱해진다.")]
     [SerializeField, Range(1f, 2f)] private float flashScaleMultiplier = 1.35f;
 
+    // 🌟 프리팹에 있는 기존 선들을 담을 변수
     private GameObject lineTop, lineBottom, lineLeft, lineRight;
-    private static Sprite sharedLineSprite;
 
     private Vector3 baseLocalScale;
     private SpotlightState currentSpotlight = SpotlightState.Normal;
-    // 스포트라이트 전환과 플래시가 같은 SpriteRenderer/Transform을 건드리므로,
-    // 한 번에 하나의 효과만 돌도록 단일 핸들로 직렬화한다.
     private Coroutine fxCoroutine;
 
     void Awake()
@@ -49,67 +44,37 @@ public class PlacedBlockVisual : MonoBehaviour
         originalColor = sr.color;
         baseLocalScale = transform.localScale;
 
-        CreateOutlineLines();
+        // 🌟 [핵심 변경] 텍스처를 새로 만들지 않고, 프리팹 자식으로 있는 Line_U, D, L, R을 찾아 연결합니다!
+        Transform tLineU = transform.Find("Line_U");
+        Transform tLineD = transform.Find("Line_D");
+        Transform tLineL = transform.Find("Line_L");
+        Transform tLineR = transform.Find("Line_R");
+
+        lineTop = tLineU != null ? tLineU.gameObject : null;
+        lineBottom = tLineD != null ? tLineD.gameObject : null;
+        lineLeft = tLineL != null ? tLineL.gameObject : null;
+        lineRight = tLineR != null ? tLineR.gameObject : null;
+
+        // 시작할 때는 선을 모두 꺼둡니다.
+        UpdateOutline(false, false, false, false);
     }
 
-    private void CreateOutlineLines()
-    {
-        // 1. 1x1 픽셀 텍스처와 스프라이트를 생성합니다. (tex 에러 방지를 위해 전체 작성)
-        if (sharedLineSprite == null)
-        {
-            Texture2D tex = new Texture2D(1, 1);
-            tex.SetPixel(0, 0, Color.white);
-            tex.Apply();
-            // 마지막 인자 1f가 십자 모양 문제를 해결하는 핵심입니다.
-            sharedLineSprite = Sprite.Create(tex, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
-        }
-
-        Vector2 size = sr.sprite != null ? (Vector2)sr.sprite.bounds.size : Vector2.one;
-
-        // 2. 선들을 생성하여 자식 오브젝트로 붙입니다.
-        lineTop = CreateSingleLine("Line_Top", new Vector2(0, size.y / 2f), new Vector2(size.x, outlineThickness));
-        lineBottom = CreateSingleLine("Line_Bottom", new Vector2(0, -size.y / 2f), new Vector2(size.x, outlineThickness));
-        lineLeft = CreateSingleLine("Line_Left", new Vector2(-size.x / 2f, 0), new Vector2(outlineThickness, size.y));
-        lineRight = CreateSingleLine("Line_Right", new Vector2(size.x / 2f, 0), new Vector2(outlineThickness, size.y));
-    }
-
-    private GameObject CreateSingleLine(string lineName, Vector2 offset, Vector2 scale)
-    {
-        GameObject lineObj = new GameObject(lineName);
-        lineObj.transform.SetParent(this.transform);
-        lineObj.transform.localPosition = offset;
-        lineObj.transform.localScale = scale;
-
-        SpriteRenderer lineSR = lineObj.AddComponent<SpriteRenderer>();
-        lineSR.sprite = sharedLineSprite;
-        lineSR.color = outlineColor;
-        lineSR.sortingOrder = sr.sortingOrder + 1;
-
-        // 🌟 추가: 인스펙터에 메테리얼을 넣었다면 렌더러에 적용해 줍니다!
-        if (outlineMaterial != null)
-        {
-            lineSR.sharedMaterial = outlineMaterial;
-        }
-
-        lineObj.SetActive(false);
-        return lineObj;
-    }
     // ==========================================
-    // 🎛️ 외곽선 끄고 켜기 (그룹 상태 체크 추가)
+    // 🎛️ 외곽선 끄고 켜기 (PowerManager가 호출함)
     // ==========================================
     public void UpdateOutline(bool top, bool bottom, bool left, bool right)
     {
-        // 🌟 핵심: 그룹 상태(isGrouped)가 아니면 모든 아웃라인을 끕니다.
+        // 🌟 그룹 상태가 아니면 무조건 다 끕니다. (PowerManager의 지시를 따름)
         if (!isGrouped)
         {
-            lineTop?.SetActive(false);
-            lineBottom?.SetActive(false);
-            lineLeft?.SetActive(false);
-            lineRight?.SetActive(false);
+            if (lineTop != null) lineTop.SetActive(false);
+            if (lineBottom != null) lineBottom.SetActive(false);
+            if (lineLeft != null) lineLeft.SetActive(false);
+            if (lineRight != null) lineRight.SetActive(false);
             return;
         }
 
-        // 그룹 상태일 때만 인접 상태에 따라 선을 켭니다.
+        // 그룹 상태라면 PowerManager가 계산해준 대로 켭니다.
         if (lineTop != null) lineTop.SetActive(top);
         if (lineBottom != null) lineBottom.SetActive(bottom);
         if (lineLeft != null) lineLeft.SetActive(left);
@@ -133,17 +98,16 @@ public class PlacedBlockVisual : MonoBehaviour
             sr.color = originalColor;
             myGroupMembers = null;
 
-            // 그룹이 해제될 때 아웃라인도 즉시 초기화
+            // 그룹 해제 시 아웃라인도 즉시 끄기
             UpdateOutline(false, false, false, false);
         }
 
-        // 그룹 전이 시 진행 중이던 스포트라이트 효과가 남아 있으면 새 베이스 색/크기와 충돌하므로 정리.
         StopFx();
         currentSpotlight = SpotlightState.Normal;
         transform.localScale = baseLocalScale;
     }
 
-    // (기존 RevealOriginal, HideToGroupColor, OnMouseEnter, OnMouseExit 함수 유지...)
+    // (아래 기존 함수들은 변경 없이 그대로 유지)
     public void RevealOriginal()
     {
         if (isGrouped)

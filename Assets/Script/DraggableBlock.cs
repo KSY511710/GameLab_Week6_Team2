@@ -32,6 +32,8 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
     private GameObject previewGhost;
     private SpriteRenderer[] ghostRenderers;
     private Vector3Int lastCellPos;
+    [Header("Block Type Settings")]
+    public int placementCost = 10;
 
     void Start()
     {
@@ -157,10 +159,25 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
 
         if (gridManager.CanPlaceShape(cellPos, shapeCoords))
         {
-            // 🌟 [수정됨] 진짜 블록을 깔 때도 프리팹 2개를 모두 전달합니다!
+            // 🌟 1. 돈 검사 및 지불 (특수 블록 눈치 볼 필요 없이 무조건 실행!)
+            if (!ResourceManager.Instance.HasCurrency(CurrencyType.Money, placementCost))
+            {
+                Debug.Log("돈이 부족해서 블록을 설치할 수 없습니다!");
+                ResetToOriginalState();
+                img.enabled = true;
+                return;
+            }
+            ResourceManager.Instance.SpendCurrency(CurrencyType.Money, placementCost);
+
+            // 2. 블록 설치!
             gridManager.PlaceShape(cellPos, shapeCoords, (int)companyColor, (int)symbolType, centerBlockPrefab, sideBlockPrefab);
 
-            if (InventoryManager.Instance != null) InventoryManager.Instance.OnBlockUsed();
+            if (InventoryManager.Instance != null)
+            {
+                transform.SetParent(null); // 슬롯에서 빠져나오기
+
+                InventoryManager.Instance.ProcessGravityAndRefill();
+            }
 
             Destroy(gameObject);
         }
