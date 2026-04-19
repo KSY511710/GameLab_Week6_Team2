@@ -2,44 +2,23 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// KSM_MapExpandButtonManager
-///
-/// 현재 열린 모든 구역을 순회하면서
-/// "확장 가능한 닫힌 targetRegion"마다 버튼을 1개씩 생성하는 매니저.
-///
-/// 이번 버전 핵심:
-/// 1. 버튼을 열린 구역의 경계가 아니라 "구매할 targetRegion 중앙"에 배치한다.
-/// 2. 버튼 크기를 targetRegion 크기에 맞춰 크게 만든다.
-/// 3. 같은 targetRegion으로 향하는 버튼은 1개만 유지한다.
-/// 4. 카메라 이동 / 줌에도 버튼 위치와 크기가 계속 targetRegion에 맞도록 갱신한다.
-/// </summary>
 public class KSM_MapExpandButtonManager : MonoBehaviour
 {
     [Header("References")]
-    [Tooltip("확장 로직을 가진 GridManager.")]
     [SerializeField] private GridManager gridManager;
-
-    [Tooltip("생성할 확장 버튼 프리팹. KSM_MapExpandButton이 붙어 있어야 한다.")]
     [SerializeField] private KSM_MapExpandButton expandButtonPrefab;
-
-    [Tooltip("생성된 버튼들을 담을 부모 Transform. 비워두면 현재 오브젝트를 사용한다.")]
     [SerializeField] private Transform buttonRoot;
 
     [Header("Placement")]
-    [Tooltip("버튼 중심의 월드 좌표 추가 오프셋. 필요하면 아주 조금만 조정.")]
     [SerializeField] private Vector3 buttonWorldOffset = Vector3.zero;
-
-    [Tooltip("targetRegion 기본 크기 대비 버튼 크기 배율. 1이면 땅 크기와 동일.")]
     [SerializeField, Min(0.1f)] private float buttonSizeScale = 1f;
 
-    [Tooltip("버튼을 targetRegion보다 조금 더 크게 만들고 싶을 때 추가할 월드 크기(X,Y).")]
-    [SerializeField] private Vector2 buttonExtraWorldSize = Vector2.zero;
+    // 타일 가장자리 인식 빈틈 줄이기
+    [SerializeField] private Vector2 buttonExtraWorldSize = new Vector2(0.20f, 0.20f);
 
-    /// <summary>
-    /// 실제 생성된 버튼과,
-    /// 이 버튼이 어떤 sourceRegion / targetRegion / direction을 대표하는지 저장한다.
-    /// </summary>
+    // Screen Space Canvas일 때 픽셀 패딩 추가
+    [SerializeField, Min(0f)] private float screenSpacePixelPadding = 12f;
+
     private class SpawnedTargetButton
     {
         public KSM_MapExpandButton button;
@@ -48,29 +27,12 @@ public class KSM_MapExpandButtonManager : MonoBehaviour
         public KSM_ExpandDirection direction;
     }
 
-    /// <summary>
-    /// 현재 생성된 버튼 목록.
-    /// </summary>
     private readonly List<SpawnedTargetButton> activeButtons = new List<SpawnedTargetButton>();
-
-    /// <summary>
-    /// 같은 targetRegion에 버튼이 여러 개 생기지 않도록 막기 위한 집합.
-    /// </summary>
     private readonly HashSet<Vector2Int> claimedTargetRegions = new HashSet<Vector2Int>();
 
-    /// <summary>
-    /// buttonRoot 상위 Canvas 캐시.
-    /// </summary>
     private Canvas cachedCanvas;
-
-    /// <summary>
-    /// buttonRoot가 RectTransform인지 캐시.
-    /// </summary>
     private RectTransform buttonRootRect;
 
-    /// <summary>
-    /// Awake 시 GridManager / buttonRoot / Canvas 참조를 자동 보정한다.
-    /// </summary>
     private void Awake()
     {
         if (gridManager == null)
@@ -86,9 +48,6 @@ public class KSM_MapExpandButtonManager : MonoBehaviour
         RefreshCanvasCache();
     }
 
-    /// <summary>
-    /// Start에서 한 프레임 기다린 뒤 버튼을 다시 생성한다.
-    /// </summary>
     private IEnumerator Start()
     {
         yield return null;
@@ -96,9 +55,6 @@ public class KSM_MapExpandButtonManager : MonoBehaviour
         RefreshAllButtons();
     }
 
-    /// <summary>
-    /// 활성화 시 상태 변경 이벤트를 구독하고 버튼을 즉시 갱신한다.
-    /// </summary>
     private void OnEnable()
     {
         GridManager.OnExpandStateChanged += HandleExpandStateChanged;
@@ -106,35 +62,28 @@ public class KSM_MapExpandButtonManager : MonoBehaviour
         RefreshAllButtons();
     }
 
-    /// <summary>
-    /// 비활성화 시 이벤트를 해제하고 버튼을 정리한다.
-    /// </summary>
     private void OnDisable()
     {
         GridManager.OnExpandStateChanged -= HandleExpandStateChanged;
         ClearAllButtons();
+
+        if (gridManager != null)
+        {
+            gridManager.KSM_ClearPassiveExpandCandidates();
+            gridManager.KSM_ClearExpansionHoverPreview();
+        }
     }
 
-    /// <summary>
-    /// 카메라 이동 / 줌 / Canvas 변화 중에도
-    /// 버튼이 targetRegion 중앙과 크기에 맞도록 매 프레임 다시 계산한다.
-    /// </summary>
     private void LateUpdate()
     {
         UpdateAllButtonTransforms();
     }
 
-    /// <summary>
-    /// 확장 성공 등으로 맵 구조가 바뀌면 버튼을 전부 다시 생성한다.
-    /// </summary>
     private void HandleExpandStateChanged()
     {
         RefreshAllButtons();
     }
 
-    /// <summary>
-    /// 현재 buttonRoot 기준으로 Canvas / RectTransform 캐시를 다시 잡는다.
-    /// </summary>
     private void RefreshCanvasCache()
     {
         if (buttonRoot == null)
@@ -146,10 +95,6 @@ public class KSM_MapExpandButtonManager : MonoBehaviour
         buttonRootRect = buttonRoot as RectTransform;
     }
 
-    /// <summary>
-    /// 현재 열린 모든 구역을 순회하면서
-    /// 구조적으로 가능한 확장 후보 targetRegion마다 버튼을 다시 생성한다.
-    /// </summary>
     public void RefreshAllButtons()
     {
         ClearAllButtons();
@@ -184,12 +129,9 @@ public class KSM_MapExpandButtonManager : MonoBehaviour
         }
 
         UpdateAllButtonTransforms();
+        gridManager.KSM_RefreshPassiveExpandCandidates();
     }
 
-    /// <summary>
-    /// 특정 열린 구역의 특정 방향에 대해
-    /// targetRegion 중앙 오버레이 버튼 생성을 시도한다.
-    /// </summary>
     private void TryCreateTargetRegionButton(Vector2Int sourceRegion, KSM_ExpandDirection direction)
     {
         if (gridManager == null)
@@ -212,6 +154,7 @@ public class KSM_MapExpandButtonManager : MonoBehaviour
         KSM_MapExpandButton newButton = Instantiate(expandButtonPrefab, buttonRoot);
         newButton.name = $"ExpandRegionButton_Target_{targetRegion.x}_{targetRegion.y}";
         newButton.Setup(gridManager, sourceRegion, direction);
+        newButton.transform.SetAsLastSibling();
 
         SpawnedTargetButton spawned = new SpawnedTargetButton
         {
@@ -225,9 +168,6 @@ public class KSM_MapExpandButtonManager : MonoBehaviour
         UpdateSingleButtonTransform(spawned);
     }
 
-    /// <summary>
-    /// 현재 생성된 모든 버튼의 위치 / 크기를 다시 계산한다.
-    /// </summary>
     private void UpdateAllButtonTransforms()
     {
         if (gridManager == null)
@@ -246,9 +186,6 @@ public class KSM_MapExpandButtonManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 버튼 하나의 targetRegion 기준 위치 / 크기를 계산한다.
-    /// </summary>
     private void UpdateSingleButtonTransform(SpawnedTargetButton spawned)
     {
         if (spawned == null || spawned.button == null || gridManager == null || gridManager.groundTilemap == null)
@@ -277,9 +214,6 @@ public class KSM_MapExpandButtonManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 특정 targetRegion의 월드 중심점과 최종 월드 크기를 계산한다.
-    /// </summary>
     private void GetTargetRegionWorldCenterAndSize(Vector2Int targetRegion, out Vector3 centerWorld, out Vector2 finalWorldSize)
     {
         RectInt targetRect = gridManager.GetRegionRect(targetRegion);
@@ -305,13 +239,12 @@ public class KSM_MapExpandButtonManager : MonoBehaviour
         ) + buttonWorldOffset;
     }
 
-    /// <summary>
-    /// Screen Space Canvas일 때 버튼 위치 / 크기를 맞춘다.
-    /// </summary>
     private void UpdateScreenSpaceButtonRect(RectTransform buttonRect, Vector3 centerWorld, Vector2 worldSize)
     {
         Camera worldCamera = gridManager.mainCamera != null ? gridManager.mainCamera : Camera.main;
-        Camera uiCamera = cachedCanvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : cachedCanvas.worldCamera;
+        Camera uiCamera = cachedCanvas != null && cachedCanvas.renderMode == RenderMode.ScreenSpaceOverlay
+            ? null
+            : cachedCanvas != null ? cachedCanvas.worldCamera : null;
 
         Vector3 worldBottomLeft = new Vector3(
             centerWorld.x - (worldSize.x * 0.5f),
@@ -333,8 +266,12 @@ public class KSM_MapExpandButtonManager : MonoBehaviour
             RectTransformUtility.ScreenPointToLocalPointInRectangle(buttonRootRect, screenBottomLeft, uiCamera, out Vector2 localBottomLeft) &&
             RectTransformUtility.ScreenPointToLocalPointInRectangle(buttonRootRect, screenTopRight, uiCamera, out Vector2 localTopRight))
         {
-            float width = Mathf.Abs(localTopRight.x - localBottomLeft.x);
-            float height = Mathf.Abs(localTopRight.y - localBottomLeft.y);
+            float width = Mathf.Abs(localTopRight.x - localBottomLeft.x) + screenSpacePixelPadding;
+            float height = Mathf.Abs(localTopRight.y - localBottomLeft.y) + screenSpacePixelPadding;
+
+            buttonRect.anchorMin = new Vector2(0.5f, 0.5f);
+            buttonRect.anchorMax = new Vector2(0.5f, 0.5f);
+            buttonRect.pivot = new Vector2(0.5f, 0.5f);
 
             buttonRect.anchoredPosition = localCenter;
             buttonRect.sizeDelta = new Vector2(width, height);
@@ -343,15 +280,16 @@ public class KSM_MapExpandButtonManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// World Space Canvas 또는 일반 월드 오브젝트일 때 버튼 위치 / 크기를 맞춘다.
-    /// </summary>
     private void UpdateWorldSpaceButtonRect(Transform buttonTransform, RectTransform buttonRect, Vector3 centerWorld, Vector2 worldSize)
     {
         if (buttonRect != null)
         {
             float targetZ = buttonRect.position.z;
             Vector3 finalWorldPos = new Vector3(centerWorld.x, centerWorld.y, targetZ);
+
+            buttonRect.anchorMin = new Vector2(0.5f, 0.5f);
+            buttonRect.anchorMax = new Vector2(0.5f, 0.5f);
+            buttonRect.pivot = new Vector2(0.5f, 0.5f);
 
             buttonRect.position = finalWorldPos;
             buttonRect.rotation = Quaternion.identity;
@@ -374,9 +312,6 @@ public class KSM_MapExpandButtonManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 현재 생성된 버튼들을 전부 삭제하고 내부 목록을 비운다.
-    /// </summary>
     private void ClearAllButtons()
     {
         for (int i = 0; i < activeButtons.Count; i++)

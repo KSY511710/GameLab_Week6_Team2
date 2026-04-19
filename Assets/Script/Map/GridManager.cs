@@ -52,7 +52,7 @@ public enum KSM_ExpandResult
 ///   bounding rectangle(boardData / buildingObjects)는 유지한다.
 /// - 열린 구역 안의 셀만 실제 배치 가능하다.
 /// </summary>
-public class GridManager : MonoBehaviour
+public partial class GridManager : MonoBehaviour
 {
     [Header("Board Settings")]
     [Tooltip("초기 시작 구역 한 변 길이. 예: 5면 한 구역은 5 x 5 셀.")]
