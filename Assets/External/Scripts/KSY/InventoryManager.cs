@@ -130,6 +130,18 @@ public class InventoryManager : MonoBehaviour
         Debug.Log("새로운 날이 밝았습니다! 상점을 무료로 갱신합니다.");
         StartCoroutine(RefreshShopRoutine());
     }
+    public void RequestReroll()
+    {
+        // 1. 돈이 있는지 먼저 확인하고 차감
+        if (ResourceManager.Instance.TryPayForReroll())
+        {
+            StartCoroutine(RefreshShopRoutine());
+        }
+        else
+        {
+            Debug.Log("리롤 비용이 부족합니다!");
+        }
+    }
 
     // 실제 상점을 싹 비우고 채우는 핵심 로직 (공통 사용)
     private IEnumerator RefreshShopRoutine()

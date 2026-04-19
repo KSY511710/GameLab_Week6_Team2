@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using TMPro;
+using UnityEditor.Build;
 using UnityEngine;
 using UnityEngine.Serialization;
 
@@ -88,6 +89,10 @@ public class ResourceManager : MonoBehaviour
     public TextMeshProUGUI sessionGoalText;
     public TextMeshProUGUI exchangeCapText;
     public TextMeshProUGUI expandCostText;
+
+    [Header("리롤 비용 설정")]
+    [SerializeField] private int baseRerollCost = 5;
+    public TextMeshProUGUI RerollCostText;
 
     // ==========================================================
     //   Runtime State
@@ -189,6 +194,7 @@ public class ResourceManager : MonoBehaviour
         RaiseDayEvent();
         RaiseSkipAvailabilityIfChanged();
         OnDrawCostChanged?.Invoke();
+        UpdateRerollCost();
     }
 
     private void ClampCurveWrapModes()
@@ -510,7 +516,16 @@ public class ResourceManager : MonoBehaviour
         OnDrawCostChanged?.Invoke();
         return true;
     }
+    public int GetRerollCost() => baseRerollCost;
 
+    public bool TryPayForReroll()
+    {
+        int cost = GetRerollCost();
+        if (!SpendMoney(cost)) return false;
+
+        UpdateRerollCost();
+        return true;
+    }
     // ==========================================================
     //   UI / Events
     // ==========================================================
@@ -565,5 +580,9 @@ public class ResourceManager : MonoBehaviour
     {
         if (curve == null) return 0;
         return Mathf.RoundToInt(curve.Evaluate(x));
+    }
+    private void UpdateRerollCost()
+    {
+        RerollCostText.text = $"Reroll:{baseRerollCost}";
     }
 }
