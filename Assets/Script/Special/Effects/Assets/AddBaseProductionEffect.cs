@@ -18,56 +18,48 @@ namespace Special.Effects.Assets
         {
             runtime.HookPowerCalculation(owner, ctx =>
             {
-                GroupInfo groupBeingCalculated = BuildTransientGroupInfo(ctx);
-                if (!ScopeEvaluator.GroupMatches(owner, scope, rangeInCells, groupBeingCalculated)) return;
+                if (!ScopeEvaluator.ClusterMatches(owner, scope, rangeInCells, ctx.ClusterPositions)) return;
 
-                int plantsInScope = CountPlantsInScope(owner);
+                var (plantsInScope, _) = CollectAffectedGroups(owner);
                 ctx.BaseProductionAdd += plantsInScope * amountPerPlant;
             });
         }
 
-        public override void Deactivate(SpecialBlockInstance owner, EffectRuntime runtime) { /* UnhookAll 이 정리 */ }
+        public override void Deactivate(SpecialBlockInstance owner, EffectRuntime runtime)
+        {
+            /* EffectRuntime.UnhookAll(owner)가 SpecialBlockRegistry.DeactivateEffects에서 호출되며 정리됨. */
+        }
 
         public override EffectPreview BuildPreview(SpecialBlockInstance owner)
         {
             EffectPreview preview = base.BuildPreview(owner);
-            int plants = CountPlantsInScope(owner);
+
+            var (plants, cells) = CollectAffectedGroups(owner);
             int bonus = plants * amountPerPlant;
 
             preview.steps.Add($"<size=20>· 범위 내 발전소 : <color=#FFE066>{plants} 개</color></size>");
             preview.steps.Add($"<size=20>· 가산량 : {plants} × {amountPerPlant} = <color=#FFE066>+{bonus}</color> 기본생산</size>");
 
-            preview.impactCells = CollectAffectedClusterCells(owner);
+            preview.impactCells = cells;
             return preview;
         }
 
-        private GroupInfo BuildTransientGroupInfo(PowerCalculationContext ctx)
+        /// <summary>
+        /// scope 에 해당하는 활성 발전소 수와 해당 발전소 셀들을 한 번의 순회로 수집한다.
+        /// 훅 경로와 BuildPreview 경로 모두 이걸 공유.
+        /// </summary>
+        private (int count, List<Vector2Int> cells) CollectAffectedGroups(SpecialBlockInstance owner)
         {
-            return new GroupInfo { clusterPositions = new List<Vector2Int>(ctx.ClusterPositions) };
-        }
-
-        private int CountPlantsInScope(SpecialBlockInstance owner)
-        {
-            if (PowerManager.Instance == null) return 0;
             int count = 0;
-            foreach (GroupInfo g in PowerManager.Instance.activeGroups)
-            {
-                if (ScopeEvaluator.GroupMatches(owner, scope, rangeInCells, g)) count++;
-            }
-            return count;
-        }
-
-        private List<Vector2Int> CollectAffectedClusterCells(SpecialBlockInstance owner)
-        {
             List<Vector2Int> cells = new List<Vector2Int>();
-            if (PowerManager.Instance == null) return cells;
+            if (PowerManager.Instance == null) return (0, cells);
             foreach (GroupInfo g in PowerManager.Instance.activeGroups)
             {
                 if (!ScopeEvaluator.GroupMatches(owner, scope, rangeInCells, g)) continue;
-                if (g.clusterPositions == null) continue;
-                cells.AddRange(g.clusterPositions);
+                count++;
+                if (g.clusterPositions != null) cells.AddRange(g.clusterPositions);
             }
-            return cells;
+            return (count, cells);
         }
     }
 }

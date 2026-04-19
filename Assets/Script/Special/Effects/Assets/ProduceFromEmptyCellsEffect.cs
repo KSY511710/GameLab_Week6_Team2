@@ -21,55 +21,53 @@ namespace Special.Effects.Assets
                 GridManager grid = Object.FindFirstObjectByType<GridManager>();
                 if (grid == null || ResourceManager.Instance == null) return;
 
-                int emptyCount = CountEmptyCells(owner, grid);
+                var (emptyCount, _) = CollectEmpty(owner, grid);
 
                 int bonus = emptyCount * perEmptyCell;
                 if (bonus > 0)
                 {
                     ResourceManager.Instance.AddElectric(bonus);
-                    Debug.Log($"[Special:{owner.definition.id}] 빈칸 {emptyCount}칸 → +{bonus} 전력");
+                    Debug.Log($"[Special:{owner?.definition?.id}] 빈칸 {emptyCount}칸 → +{bonus} 전력");
                 }
             });
         }
 
-        public override void Deactivate(SpecialBlockInstance owner, EffectRuntime runtime) { }
+        public override void Deactivate(SpecialBlockInstance owner, EffectRuntime runtime)
+        {
+            /* EffectRuntime.UnhookAll(owner)가 SpecialBlockRegistry.DeactivateEffects에서 호출되며 정리됨. */
+        }
 
         public override EffectPreview BuildPreview(SpecialBlockInstance owner)
         {
             EffectPreview preview = base.BuildPreview(owner);
 
             GridManager grid = Object.FindFirstObjectByType<GridManager>();
-            int emptyCount = grid != null ? CountEmptyCells(owner, grid) : 0;
+            var (emptyCount, cells) = grid != null ? CollectEmpty(owner, grid) : (0, new List<Vector2Int>());
             int bonus = emptyCount * perEmptyCell;
 
             preview.steps.Add($"<size=20>· 범위 내 빈칸 : <color=#A0E0FF>{emptyCount} 칸</color></size>");
             preview.steps.Add($"<size=20>· 일일 보너스 : {emptyCount} × {perEmptyCell} = <color=#FFE066>+{bonus}</color> 전력</size>");
 
-            preview.impactCells = CollectEmptyCells(owner, grid);
+            preview.impactCells = cells;
             return preview;
         }
 
-        private int CountEmptyCells(SpecialBlockInstance owner, GridManager grid)
-        {
-            int count = 0;
-            foreach (Vector2Int cell in ScopeEvaluator.CellsInRange(owner, rangeInCells, grid.width, grid.height))
-            {
-                if (owner.FootprintContains(cell)) continue;
-                if (grid.IsEmptyCell(cell)) count++;
-            }
-            return count;
-        }
-
-        private List<Vector2Int> CollectEmptyCells(SpecialBlockInstance owner, GridManager grid)
+        /// <summary>
+        /// scope 범위 안에서 owner footprint 를 제외한 빈칸을 한 번의 순회로 수집.
+        /// 훅/프리뷰 양쪽에서 공유.
+        /// </summary>
+        private (int count, List<Vector2Int> cells) CollectEmpty(SpecialBlockInstance owner, GridManager grid)
         {
             List<Vector2Int> cells = new List<Vector2Int>();
-            if (grid == null) return cells;
+            if (owner == null || grid == null) return (0, cells);
+
             foreach (Vector2Int cell in ScopeEvaluator.CellsInRange(owner, rangeInCells, grid.width, grid.height))
             {
                 if (owner.FootprintContains(cell)) continue;
-                if (grid.IsEmptyCell(cell)) cells.Add(cell);
+                if (!grid.IsEmptyCell(cell)) continue;
+                cells.Add(cell);
             }
-            return cells;
+            return (cells.Count, cells);
         }
     }
 }

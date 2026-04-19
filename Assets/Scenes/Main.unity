@@ -4695,37 +4695,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1089462226
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1089462227}
-  m_Layer: 0
-  m_Name: GameObject
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1089462227
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1089462226}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1435.1919, y: 519.0408, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1091429663
 GameObject:
   m_ObjectHideFlags: 0
@@ -7095,7 +7064,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &1556370297
 RectTransform:
   m_ObjectHideFlags: 0
@@ -9986,10 +9955,20 @@ MonoBehaviour:
   dayEndPerEntryDelay: 0.3
   dayEndFlashDuration: 0.2
   dayEndPostTotalDelay: 1.5
+  specialStepSeconds: 0.7
+  specialFlashDuration: 0.4
+  specialPostFinalDelay: 0.6
+  specialOverlayHoldExtra: 0.4
+  specialSpotlightSettleDelay: 0.1
+  waitBetweenPlacements: 0.1
   panelRoot: {fileID: 286917277}
   calcStepText: {fileID: 722346238}
   highlightColor: {r: 1, g: 1, b: 0.4, a: 1}
   ungroupedHighlightColor: {r: 0.7, g: 0.7, b: 0.7, a: 1}
+  overlayCellSprite: {fileID: 0}
+  overlaySortingOrder: 50
+  footprintFlashColor: {r: 1, g: 0.95, b: 0.4, a: 1}
+  affectedFlashColor: {r: 0.6, g: 1, b: 0.9, a: 1}
 --- !u!1001 &5016831467443797428
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -10104,7 +10083,6 @@ SceneRoots:
   - {fileID: 1974646476}
   - {fileID: 1682614365}
   - {fileID: 1247645924}
-  - {fileID: 1089462227}
   - {fileID: 99708515}
   - {fileID: 1163356464}
   - {fileID: 153269201}

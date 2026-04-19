@@ -6,7 +6,7 @@ namespace Special.Integration
     /// <summary>
     /// 특수 블럭 효과의 영향 범위(scope)를 보드 위에 옅게 깔아 보여주는 헬퍼.
     /// SpriteRenderer 기반 1셀 짜리 quad 를 풀링해서 사용 — GC 와 매 프레임 인스턴스화를 피한다.
-    /// SpecialPlacementSequencer 가 소유하고, Show/Hide 만 호출한다.
+    /// PowerAnimationSequencer(설치 연출)와 SpecialDraggableBlock(드래그 프리뷰)이 instance-per-owner 로 들고 Show/Hide 만 호출한다.
     /// </summary>
     public class ScopeOverlayRenderer
     {

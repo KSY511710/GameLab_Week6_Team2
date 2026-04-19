@@ -40,5 +40,28 @@ namespace Special.Runtime
                 if (footprint[i] == cell) return true;
             return false;
         }
+
+        /// <summary>
+        /// 드래그 중 스코프 계산용 일회성 인스턴스. 레지스트리에 등록되지 않으며
+        /// instanceId/zoneId 는 0 으로 고정. footprint 는 def.shapeCoords 를 anchor 에서 오프셋 해 만들고
+        /// 보드 경계를 벗어난 칸은 잘라낸다. 전부 잘리면 null 반환.
+        /// </summary>
+        public static SpecialBlockInstance CreateDragPreview(SpecialBlockDefinition def, Vector2Int anchorArrayCell, int width, int height)
+        {
+            if (def == null) return null;
+            Vector2Int[] shape = def.shapeCoords;
+            if (shape == null || shape.Length == 0) return null;
+
+            List<Vector2Int> footprint = new List<Vector2Int>();
+            for (int i = 0; i < shape.Length; i++)
+            {
+                Vector2Int cell = anchorArrayCell + shape[i];
+                if (cell.x < 0 || cell.x >= width || cell.y < 0 || cell.y >= height) continue;
+                footprint.Add(cell);
+            }
+            if (footprint.Count == 0) return null;
+
+            return new SpecialBlockInstance(0, def, anchorArrayCell, footprint, 0);
+        }
     }
 }

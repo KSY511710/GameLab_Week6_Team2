@@ -45,6 +45,13 @@ namespace Special.Effects
         }
 
         /// <summary>
+        /// 드래그 중 프리뷰용으로 형태적 영향 범위 셀만 얇게 계산해 반환.
+        /// BuildPreview 는 PowerManager.activeGroups 조회 등 무거운 작업을 포함하므로 드래그 경로에서는 쓰지 않는다.
+        /// </summary>
+        public List<Vector2Int> BuildDragPreviewCells(SpecialBlockInstance previewOwner)
+            => ResolveDefaultScopeCells(previewOwner);
+
+        /// <summary>
         /// scope/rangeInCells 만으로 산출되는 기본 영역 셀.
         /// Global / Zone 처럼 "전체"에 해당하는 경우엔 빈 리스트(=텍스트만 표시)를 돌려준다.
         /// </summary>

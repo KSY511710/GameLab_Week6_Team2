@@ -321,6 +321,11 @@ public class PowerManager : MonoBehaviour
 
     public void CalculateTotalPower(BlockData[,] board, int width, int height)
     {
+        // 훅은 CreateNewGroup 시점에만 fire 하고, 이후 새로 들어온 특수 블럭은
+        // 기존 그룹의 groupPower 를 자동으로 갱신하지 못한다. 합산 전에 훅을 재반영해
+        // AddBaseProductionEffect 같은 "존재하는 발전소를 건드리는" 효과가 실제 값에 반영되게 한다.
+        RecalculateAllGroupPowers();
+
         float calculatedTotalPower = 0;
         foreach (GroupInfo group in activeGroups)
         {
@@ -357,6 +362,37 @@ public class PowerManager : MonoBehaviour
             OnTotalPowerChanged?.Invoke();
         }
         UpdateDisplayedPowerUI();
+    }
+
+    /// <summary>
+    /// 현재 등록된 훅 상태를 기준으로 모든 활성 그룹의 groupPower / 예상 수익을 다시 계산한다.
+    /// 각 그룹이 CreateNewGroup 시점에 캐시해 둔 raw 중간값(baseProduction / uniqueParts / completionMultiplier / colorMultiplier)을 재사용하므로
+    /// BFS 재실행 없이 훅만 다시 반영된다. 특수 블럭 설치 후 CalculateTotalPower 가 호출되는 흐름에서 자동으로 실행된다.
+    /// </summary>
+    public void RecalculateAllGroupPowers()
+    {
+        if (activeGroups == null || activeGroups.Count == 0) return;
+        float baseRatio = ResourceManager.Instance != null ? ResourceManager.Instance.ExchangeRatio : 10f;
+
+        for (int i = 0; i < activeGroups.Count; i++)
+        {
+            GroupInfo g = activeGroups[i];
+            if (g == null || g.clusterPositions == null) continue;
+
+            PowerCalculationContext ctx = new PowerCalculationContext
+            {
+                BaseProductionRaw = g.baseProduction,
+                UniquePartsRaw = g.uniqueParts,
+                CompletionMultiplierRaw = g.completionMultiplier,
+                ColorMultiplierRaw = g.colorMultiplier,
+                ClusterPositions = g.clusterPositions
+            };
+            EffectRuntime.Instance.ApplyPowerHooks(ctx);
+
+            g.groupPower = ctx.Compute();
+            g.appliedExchangeRatio = baseRatio;
+            g.estimatedMoneyGen = baseRatio > 0f ? g.groupPower / baseRatio : 0f;
+        }
     }
 
     /// <summary>시퀀서가 일일 정산 직후 호출. powerText에 표시될 "전날 발전량"을 갱신.</summary>

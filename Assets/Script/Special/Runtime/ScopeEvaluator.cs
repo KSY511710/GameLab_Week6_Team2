@@ -69,6 +69,78 @@ namespace Special.Runtime
             }
         }
 
+        // =========================================================
+        // Raw-cell 기반 오버로드: 훅 콜백은 PowerCalculationContext.ClusterPositions 만 알고 있다.
+        // 가짜 GroupInfo 를 구성하지 않고도 scope 판정이 가능하도록 아래 Cluster* 를 제공.
+        // =========================================================
+
+        public static bool ClusterWithinRange(SpecialBlockInstance owner, IReadOnlyList<Vector2Int> clusterCells, int rangeInCells)
+        {
+            if (owner == null || clusterCells == null) return false;
+            for (int i = 0; i < clusterCells.Count; i++)
+            {
+                Vector2Int gc = clusterCells[i];
+                for (int j = 0; j < owner.footprint.Count; j++)
+                {
+                    if (ManhattanDistance(gc, owner.footprint[j]) <= rangeInCells) return true;
+                }
+            }
+            return false;
+        }
+
+        public static bool ClusterAdjacentToOwner(SpecialBlockInstance owner, IReadOnlyList<Vector2Int> clusterCells)
+        {
+            if (owner == null || clusterCells == null) return false;
+            for (int i = 0; i < clusterCells.Count; i++)
+            {
+                Vector2Int gc = clusterCells[i];
+                for (int j = 0; j < owner.footprint.Count; j++)
+                {
+                    if (ManhattanDistance(gc, owner.footprint[j]) == 1) return true;
+                }
+            }
+            return false;
+        }
+
+        public static bool ClusterInZone(SpecialBlockInstance owner, IReadOnlyList<Vector2Int> clusterCells)
+        {
+            if (owner == null || clusterCells == null) return false;
+            IZoneService zones = ZoneServiceLocator.Current;
+            for (int i = 0; i < clusterCells.Count; i++)
+            {
+                if (zones.GetZoneIdFromCell(clusterCells[i]) == owner.zoneId) return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// OwnPowerPlant scope 의 raw-cell 근사. 훅 시점엔 owner.groupId 가 아직 세팅되지 않았을 수 있어
+        /// "cluster 의 어느 칸이라도 owner.footprint 와 겹치면 같은 발전소"로 본다.
+        /// </summary>
+        public static bool ClusterIncludesOwner(SpecialBlockInstance owner, IReadOnlyList<Vector2Int> clusterCells)
+        {
+            if (owner == null || clusterCells == null) return false;
+            for (int i = 0; i < clusterCells.Count; i++)
+            {
+                if (owner.FootprintContains(clusterCells[i])) return true;
+            }
+            return false;
+        }
+
+        /// <summary>GroupMatches 의 raw-cell 버전.</summary>
+        public static bool ClusterMatches(SpecialBlockInstance owner, EffectScope scope, int rangeInCells, IReadOnlyList<Vector2Int> clusterCells)
+        {
+            switch (scope)
+            {
+                case EffectScope.Range: return ClusterWithinRange(owner, clusterCells, rangeInCells);
+                case EffectScope.Global: return true;
+                case EffectScope.OwnPowerPlant: return ClusterIncludesOwner(owner, clusterCells);
+                case EffectScope.Zone: return ClusterInZone(owner, clusterCells);
+                case EffectScope.AdjacentPowerPlant: return ClusterAdjacentToOwner(owner, clusterCells);
+                default: return false;
+            }
+        }
+
         public static int ManhattanDistance(Vector2Int a, Vector2Int b)
             => Mathf.Abs(a.x - b.x) + Mathf.Abs(a.y - b.y);
 

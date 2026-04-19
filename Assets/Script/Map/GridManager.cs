@@ -247,6 +247,10 @@ public class GridManager : MonoBehaviour
         return new Vector2Int(tileX - currentOffset.x, tileY - currentOffset.y);
     }
 
+    /// <summary>월드 셀을 배열 인덱스로 바꾸는 공개 래퍼. 드래그 스코프 프리뷰에서 사용.</summary>
+    public Vector2Int WorldCellToArrayIndex(Vector3Int worldCell)
+        => TileToArrayIndex(worldCell.x, worldCell.y);
+
     /// <summary>
     /// 월드 셀이 현재 열린 구역 안에 포함되는지 검사한다.
     /// 단순히 bounding rectangle 안에 있는지가 아니라,

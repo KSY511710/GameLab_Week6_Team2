@@ -5,7 +5,7 @@ namespace Special.Effects
 {
     /// <summary>
     /// 한 효과가 자신을 시각적으로 어떻게 펼칠지 담는 데이터 묶음.
-    /// SpecialPlacementSequencer 가 화면에 보여줄 텍스트/오버레이/하이라이트 셀을 한 자리에 모은다.
+    /// PowerAnimationSequencer 가 화면에 보여줄 텍스트/오버레이/하이라이트 셀을 한 자리에 모은다.
     /// 효과 구현체는 BuildPreview 에서 이 객체를 채워 반환한다.
     /// </summary>
     public class EffectPreview

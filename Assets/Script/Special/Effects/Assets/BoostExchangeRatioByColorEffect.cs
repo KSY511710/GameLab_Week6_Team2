@@ -22,8 +22,7 @@ namespace Special.Effects.Assets
             {
                 if (PowerManager.Instance == null) return;
 
-                GroupInfo probe = new GroupInfo { clusterPositions = new List<Vector2Int>(ctx.ClusterPositions) };
-                if (!ScopeEvaluator.GroupInZone(owner, probe)) return;
+                if (!ScopeEvaluator.ClusterInZone(owner, ctx.ClusterPositions)) return;
 
                 if (!IsColorDominantInZone(owner)) return;
 
@@ -34,7 +33,10 @@ namespace Special.Effects.Assets
             });
         }
 
-        public override void Deactivate(SpecialBlockInstance owner, EffectRuntime runtime) { }
+        public override void Deactivate(SpecialBlockInstance owner, EffectRuntime runtime)
+        {
+            /* EffectRuntime.UnhookAll(owner)가 SpecialBlockRegistry.DeactivateEffects에서 호출되며 정리됨. */
+        }
 
         public override EffectPreview BuildPreview(SpecialBlockInstance owner)
         {
@@ -73,6 +75,8 @@ namespace Special.Effects.Assets
 
         private bool IsColorDominantInZone(SpecialBlockInstance owner)
         {
+            if (PowerManager.Instance == null) return false;
+
             int total = 0;
             int match = 0;
             foreach (GroupInfo g in PowerManager.Instance.activeGroups)
@@ -87,6 +91,7 @@ namespace Special.Effects.Assets
 
         private int DominantColorOfCluster(IReadOnlyList<Vector2Int> cluster)
         {
+            // teardown 중 grid null 허용.
             GridManager grid = Object.FindFirstObjectByType<GridManager>();
             if (grid == null) return 0;
             Dictionary<int, int> counts = new Dictionary<int, int>();
