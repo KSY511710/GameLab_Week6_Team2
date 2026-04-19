@@ -301,6 +301,11 @@ public class ResourceManager : MonoBehaviour
             CheckDailyGoalOrGameOver();
         }
 
+        if (InventoryManager.Instance != null)
+        {
+            InventoryManager.Instance.RefreshShopFree();
+        }
+
         UpdateUI();
         RaiseSkipAvailabilityIfChanged();
     }
