@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Special.Composition.Contexts;
 using Special.Data;
 using Special.Runtime;
 using UnityEngine;
@@ -680,12 +681,42 @@ public class GridManager : MonoBehaviour
             SpecialBlockRegistry.Instance.RegisterPlacement(specialDef, anchorArray, footprint, zoneId);
         }
 
+        // 색상 오버라이드 훅 (효과 h/i). 등록된 콜백이 OverrideColorId 와 TargetCells 를 채우면 해당 셀 색을 강제 변경.
+        // 훅이 없으면 기존 동작과 동일.
+        var colorCtx = new ColorOverrideContext { TargetCells = new List<Vector2Int>() };
+        EffectRuntime.Instance.ApplyColorOverrideHooks(colorCtx);
+        if (colorCtx.OverrideColorId > 0 && colorCtx.TargetCells != null)
+        {
+            for (int i = 0; i < colorCtx.TargetCells.Count; i++)
+            {
+                ApplyColorOverrideToCell(colorCtx.TargetCells[i], colorCtx.OverrideColorId);
+            }
+        }
+
         if (PowerManager.Instance != null)
         {
             PowerManager.Instance.CheckAndFormGroups(boardData, width, height);
             PowerManager.Instance.CalculateTotalPower(boardData, width, height);
             PowerManager.Instance.UpdateAllOutlines(boardData, width, height);
         }
+    }
+
+    /// <summary>
+    /// 특정 셀의 colorID 를 강제 변경. boardData attribute 를 갱신하고, 이후의 CheckAndFormGroups 가
+    /// 새 색을 기준으로 그룹을 재형성해 PlacedBlockVisual.SetGroupState 경유로 시각이 갱신된다.
+    /// 범위 밖이거나 빈 셀이면 무시. 레거시/일반 블럭 모두 지원.
+    /// </summary>
+    public void ApplyColorOverrideToCell(Vector2Int arrayIdx, int newColorId)
+    {
+        if (arrayIdx.x < 0 || arrayIdx.x >= width || arrayIdx.y < 0 || arrayIdx.y >= height) return;
+        BlockData cell = boardData[arrayIdx.x, arrayIdx.y];
+        if (cell == null || cell.attribute == null) return;
+        if (cell.attribute.colorID == newColorId) return;
+
+        BlockAttribute prev = cell.attribute;
+        cell.attribute = prev.specialDef != null
+            ? new BlockAttribute(newColorId, prev.shapeID, prev.specialDef)
+            : new BlockAttribute(newColorId, prev.shapeID);
     }
 
     /// <summary>

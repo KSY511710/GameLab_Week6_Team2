@@ -10,21 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7d01b16d7cebedb46a77a7b4d86a01ac, type: 3}
-  m_Name: SpecialBlock_test
+  m_Name: SpecialBlock_fuck
   m_EditorClassIdentifier: Assembly-CSharp::Special.Data.SpecialBlockDefinition
-  id: test
-  displayName: "\uD14C\uC2A4\uD2B8"
-  icon: {fileID: -760248212612917335, guid: e652722985d89634e9c773ddc7e7fda0, type: 3}
+  id: 
+  displayName: 
+  icon: {fileID: 0}
   shapeCoords:
   - {x: 0, y: 0}
   allowRotation: 0
-  colorBinding: 2
-  includedPrimaries: 0
+  colorBinding: 0
+  includedPrimaries: 1
   offPaletteColor: {r: 0, g: 0, b: 0, a: 1}
-  uniqueShapeId: 1000
-  role: 1
-  maxPerGame: 2
-  maxPerZone: 2
+  uniqueShapeId: 1002
+  role: 0
+  maxPerGame: 1
+  maxPerZone: 1
   effectAssets:
-  - {fileID: 11400000, guid: 1041cd0a606f5dd46b7c5ca1cbd053cc, type: 2}
+  - {fileID: 0}
   customEffectPrefabs: []

@@ -3,7 +3,12 @@
     "allow": [
       "Bash(xargs grep *)",
       "Bash(find \"/c/Users/jungle/Documents/GitHub/GameLab_Week6_Team2/Assets/Scenes\" -name \"*.unity\" -type f -exec grep -l \"Button\\\\|Canvas\" {} \\\\;)",
-      "Bash(find /c/Users/jungle/Documents/GitHub/GameLab_Week6_Team2/Assets -name \"*.cs\" -type f ! -path \"*/Plugins/*\" ! -path \"*/TextMesh*\" -exec grep -l \"Save\\\\|Load\\\\|JSON\\\\|Persist\\\\|PlayerPrefs\" {} \\\\;)"
+      "Bash(find /c/Users/jungle/Documents/GitHub/GameLab_Week6_Team2/Assets -name \"*.cs\" -type f ! -path \"*/Plugins/*\" ! -path \"*/TextMesh*\" -exec grep -l \"Save\\\\|Load\\\\|JSON\\\\|Persist\\\\|PlayerPrefs\" {} \\\\;)",
+      "Bash(xargs wc *)",
+      "Bash(git -C /c/Users/jungle/Documents/GitHub/GameLab_Week6_Team2 log --oneline --all)",
+      "Bash(git -C /c/Users/jungle/Documents/GitHub/GameLab_Week6_Team2 show 9faba80 --stat)",
+      "Bash(grep -i \"\\\\.cs$\")",
+      "Bash(xargs ls *)"
     ]
   }
 }

@@ -88,6 +88,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4ed18f33dd2222e40b081d6a5db38697, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Special.Integration.SpecialDraggableBlock
-  definition: {fileID: 11400000, guid: 978424bdfb1174d4fbe874a412fe3b15, type: 2}
+  definition: {fileID: 11400000, guid: 3364486164d2d6f43b1ec24a90182220, type: 2}
   centerBlockPrefab: {fileID: 5604221498634425768, guid: aaa4ec7fb29575a45bea88156a7f7257, type: 3}
   sideBlockPrefab: {fileID: 0}
+  dragOverlaySprite: {fileID: 0}
+  dragOverlaySortingOrder: 49
+  dragOverlayFallbackColor: {r: 1, g: 0.85, b: 0.2, a: 0.28}

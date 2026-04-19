@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Special.Composition.Contexts;
 using Special.Effects;
 using UnityEngine;
 
@@ -25,6 +26,10 @@ namespace Special.Runtime
         private readonly List<Hook<Action>> productionSettleHooks = new();
         private readonly List<Hook<Action>> dailySettleHooks = new();
         private readonly List<Hook<Action>> continuousHooks = new();
+        private readonly List<Hook<Action<TicketSettleContext>>> ticketHooks = new();
+        private readonly List<Hook<Action<SkipSettleContext>>> skipHooks = new();
+        private readonly List<Hook<Action<ColorOverrideContext>>> colorOverrideHooks = new();
+        private readonly List<Hook<Action<ProductionCountContext>>> productionCountHooks = new();
 
         // ============ Registration ============
 
@@ -48,6 +53,22 @@ namespace Special.Runtime
         public void HookContinuous(SpecialBlockInstance owner, Action cb)
             => continuousHooks.Add(new Hook<Action> { Owner = owner, Callback = cb });
 
+        /// <summary>기획 효과 k) 일일 정산 후 보너스 티켓 지급. ResourceManager.ProcessNextDay 직후 발화.</summary>
+        public void HookTicketProduction(SpecialBlockInstance owner, Action<TicketSettleContext> cb)
+            => ticketHooks.Add(new Hook<Action<TicketSettleContext>> { Owner = owner, Callback = cb });
+
+        /// <summary>기획 효과 j) 스킵 정산 시 일수당 티켓 보너스 수정. ResourceManager.TrySkip 중 발화.</summary>
+        public void HookSkipSettle(SpecialBlockInstance owner, Action<SkipSettleContext> cb)
+            => skipHooks.Add(new Hook<Action<SkipSettleContext>> { Owner = owner, Callback = cb });
+
+        /// <summary>기획 효과 h/i) 블록 설치 시 특정 셀 색을 강제 변경. GridManager.PlaceShape 직후 발화.</summary>
+        public void HookColorOverride(SpecialBlockInstance owner, Action<ColorOverrideContext> cb)
+            => colorOverrideHooks.Add(new Hook<Action<ColorOverrideContext>> { Owner = owner, Callback = cb });
+
+        /// <summary>기획 효과 g) 그룹 생산 횟수 증가. PowerManager.BuildSettlementData 그룹 순회 중 발화.</summary>
+        public void HookProductionCount(SpecialBlockInstance owner, Action<ProductionCountContext> cb)
+            => productionCountHooks.Add(new Hook<Action<ProductionCountContext>> { Owner = owner, Callback = cb });
+
         /// <summary>Deactivate 시 호출. owner 의 모든 훅을 일괄 제거.</summary>
         public void UnhookAll(SpecialBlockInstance owner)
         {
@@ -56,6 +77,10 @@ namespace Special.Runtime
             productionSettleHooks.RemoveAll(h => h.Owner == owner);
             dailySettleHooks.RemoveAll(h => h.Owner == owner);
             continuousHooks.RemoveAll(h => h.Owner == owner);
+            ticketHooks.RemoveAll(h => h.Owner == owner);
+            skipHooks.RemoveAll(h => h.Owner == owner);
+            colorOverrideHooks.RemoveAll(h => h.Owner == owner);
+            productionCountHooks.RemoveAll(h => h.Owner == owner);
         }
 
         // ============ Dispatch (called by PowerManager / ResourceManager) ============
@@ -105,6 +130,42 @@ namespace Special.Runtime
             for (int i = 0; i < continuousHooks.Count; i++)
             {
                 try { continuousHooks[i].Callback?.Invoke(); }
+                catch (Exception e) { Debug.LogException(e); }
+            }
+        }
+
+        public void ApplyTicketHooks(TicketSettleContext ctx)
+        {
+            for (int i = 0; i < ticketHooks.Count; i++)
+            {
+                try { ticketHooks[i].Callback?.Invoke(ctx); }
+                catch (Exception e) { Debug.LogException(e); }
+            }
+        }
+
+        public void ApplySkipHooks(SkipSettleContext ctx)
+        {
+            for (int i = 0; i < skipHooks.Count; i++)
+            {
+                try { skipHooks[i].Callback?.Invoke(ctx); }
+                catch (Exception e) { Debug.LogException(e); }
+            }
+        }
+
+        public void ApplyColorOverrideHooks(ColorOverrideContext ctx)
+        {
+            for (int i = 0; i < colorOverrideHooks.Count; i++)
+            {
+                try { colorOverrideHooks[i].Callback?.Invoke(ctx); }
+                catch (Exception e) { Debug.LogException(e); }
+            }
+        }
+
+        public void ApplyProductionCountHooks(ProductionCountContext ctx)
+        {
+            for (int i = 0; i < productionCountHooks.Count; i++)
+            {
+                try { productionCountHooks[i].Callback?.Invoke(ctx); }
                 catch (Exception e) { Debug.LogException(e); }
             }
         }

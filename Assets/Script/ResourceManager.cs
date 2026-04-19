@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using Special.Composition.Contexts;
+using Special.Runtime;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -101,6 +103,7 @@ public class ResourceManager : MonoBehaviour
     private int sessionIndex;
     private int todayProduction;
     private int dailyProductionGoal;
+    private int skippedDaysTotal;        // 누적 스킵 일수 (특수 블럭 조건용)
     private bool gameOver;
     private bool lastCanSkip;
 
@@ -132,6 +135,7 @@ public class ResourceManager : MonoBehaviour
     public int TotalDay                => totalDay;
     public int CurrentD_Day            => currentDDay;
     public int SessionIndex            => sessionIndex;
+    public int SkippedDaysTotal        => skippedDaysTotal;
     public int D_DayInterval           => dDay;
     public int DailyProductionGoal     => dailyProductionGoal;
     public int TodayProduction         => todayProduction;
@@ -285,6 +289,12 @@ public class ResourceManager : MonoBehaviour
         todayProduction = PowerManager.Instance != null ? PowerManager.Instance.GetTotalPower() : 0;
         AddCurrency(CurrencyType.Electricity, todayProduction);
 
+        // 1-b. 특수 블럭 티켓 생산 훅 (효과 k) — 등록된 콜백이 없으면 아무 일도 일어나지 않음
+        var ticketCtx = new TicketSettleContext();
+        EffectRuntime.Instance.ApplyTicketHooks(ticketCtx);
+        if (ticketCtx.BonusTickets > 0)
+            AddCurrency(CurrencyType.Ticket, ticketCtx.BonusTickets);
+
         // 2. 자동 교환 (오늘의 캡 범위 내)
         AutoExchangeElectricityForMoney();
 
@@ -324,8 +334,14 @@ public class ResourceManager : MonoBehaviour
         }
 
         int skippedDays = currentDDay;
-        int reward = ticketsPerSkippedDay * skippedDays;
+
+        // 특수 블럭 스킵 정산 훅 (효과 j) — 등록된 콜백이 BonusTicketsPerDay 를 수정 가능
+        var skipCtx = new SkipSettleContext { SkippedDays = skippedDays, BonusTicketsPerDay = ticketsPerSkippedDay };
+        EffectRuntime.Instance.ApplySkipHooks(skipCtx);
+
+        int reward = skipCtx.BonusTicketsPerDay * skippedDays;
         AddCurrency(CurrencyType.Ticket, reward);
+        skippedDaysTotal += skippedDays;
         Debug.Log($"<color=cyan>스킵 성공!</color> 남은 {skippedDays}일 분 티켓 {reward}개 보상.");
 
         AdvanceToNextSession();

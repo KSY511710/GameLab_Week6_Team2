@@ -388,7 +388,8 @@ public class PowerManager : MonoBehaviour
         {
             BaseProductionRaw = baseProduction,
             UniquePartsRaw = uniquePartsCount,
-            CompletionMultiplierRaw = completionMultiplier,
+            BaseCompletionRaw = 2,
+            ShapeCompletionRaw = shapeBonus,
             ColorMultiplierRaw = colorMultiplier,
             ClusterPositions = cluster
         };
@@ -549,7 +550,8 @@ public class PowerManager : MonoBehaviour
             {
                 BaseProductionRaw = g.baseProduction,
                 UniquePartsRaw = g.uniqueParts,
-                CompletionMultiplierRaw = g.completionMultiplier,
+                BaseCompletionRaw = 2,
+                ShapeCompletionRaw = g.formationMultiplier,
                 ColorMultiplierRaw = g.colorMultiplier,
                 ClusterPositions = g.clusterPositions
             };
@@ -689,12 +691,20 @@ public class PowerManager : MonoBehaviour
 
         foreach (GroupInfo group in activeGroups)
         {
+            // 특수 블럭 생산 횟수 훅 (효과 g) — ExtraRepeatCount 만큼 추가 1회 더 생산 취급.
+            // 콜백이 0 개이면 ExtraRepeatCount=0 이 유지되어 기존 동작과 동일.
+            var pc = new Special.Composition.Contexts.ProductionCountContext { Group = group, ExtraRepeatCount = 0 };
+            EffectRuntime.Instance.ApplyProductionCountHooks(pc);
+            float repeatFactor = 1f + Mathf.Max(0, pc.ExtraRepeatCount);
+            float effectivePower = group.groupPower * repeatFactor;
+            float effectiveMoney = group.estimatedMoneyGen * repeatFactor;
+
             switch (group.finalColor)
             {
-                case 1: groupedRed   += group.groupPower; groupedRedMoney   += group.estimatedMoneyGen; break;
-                case 2: groupedBlue  += group.groupPower; groupedBlueMoney  += group.estimatedMoneyGen; break;
-                case 3: groupedGreen += group.groupPower; groupedGreenMoney += group.estimatedMoneyGen; break;
-                default: groupedScrap += group.groupPower; groupedScrapMoney += group.estimatedMoneyGen; break;
+                case 1: groupedRed   += effectivePower; groupedRedMoney   += effectiveMoney; break;
+                case 2: groupedBlue  += effectivePower; groupedBlueMoney  += effectiveMoney; break;
+                case 3: groupedGreen += effectivePower; groupedGreenMoney += effectiveMoney; break;
+                default: groupedScrap += effectivePower; groupedScrapMoney += effectiveMoney; break;
             }
         }
 
