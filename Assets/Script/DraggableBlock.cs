@@ -75,6 +75,7 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
 
     void RotateShape()
     {
+        // 1. 논리적인 좌표 회전
         for (int i = 0; i < shapeCoords.Length; i++)
         {
             int x = shapeCoords[i].x;
@@ -82,11 +83,20 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
             shapeCoords[i] = new Vector2Int(y, -x);
         }
 
-        transform.Rotate(0, 0, -90);
+        // 2. 부모 오브젝트 회전
+        transform.Rotate(0, 0, -90); // 인벤토리 아이콘 회전
+
         if (previewGhost != null)
         {
-            previewGhost.transform.Rotate(0, 0, -90);
-            if (isDragging) UpdateGhostValidity(lastCellPos);
+            previewGhost.transform.Rotate(0, 0, -90); // 유령 전체 회전
+
+            // 🌟 [추가] 중앙 블록을 찾아서 회전값을 세계 좌표 기준으로 리셋!
+            Transform center = previewGhost.transform.Find("CenterPiece");
+            if (center != null)
+            {
+                // 부모가 어떻게 돌아가든 중앙 블록은 항상 0도를 유지합니다.
+                center.rotation = Quaternion.identity;
+            }
         }
     }
 
