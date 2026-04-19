@@ -91,7 +91,7 @@ MonoBehaviour:
   companyColor: 1
   symbolType: 1
   blockSize: 3
-  centerBlockPrefab: {fileID: 0}
+  centerBlockPrefab: {fileID: 5604221498634425768, guid: 8e9e3f9eb80516a4ca4798e6d04833ce, type: 3}
   sideBlockPrefab: {fileID: 5604221498634425768, guid: 31b22580d838936479de629e4410b87b, type: 3}
   shapeCoords:
   - {x: 0, y: 0}

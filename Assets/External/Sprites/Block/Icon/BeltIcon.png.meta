@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: e9f55fc85f402b24f91240bfe6ae63db
+guid: 9ac8aa679d81062478511fed2ce37a45
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -7759590194660207465
-    second: RedBattery_0
+      213: -3253913800141362932
+    second: BeltIcon_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: RedBattery_0
+      name: BeltIcon_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 0
-        width: 800
-        height: 880
+        x: 139
+        y: 215
+        width: 522
+        height: 574
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 7949cac74d5605490800000000000000
-      internalID: -7759590194660207465
+      spriteID: c0925d483a6c7d2d0800000000000000
+      internalID: -3253913800141362932
       vertices: []
       indices: 
       edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      RedBattery_0: -7759590194660207465
+      BeltIcon_0: -3253913800141362932
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

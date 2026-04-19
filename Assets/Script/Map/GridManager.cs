@@ -636,12 +636,20 @@ public class GridManager : MonoBehaviour
 
             Vector3 cellWorldPos = groundTilemap.GetCellCenterWorld(new Vector3Int(tx, ty, 0));
 
-            // 🌟 [핵심 변경점] 현재 그리는 칸(offset)이 (0,0)이면 중앙 프리팹, 아니면 자투리 프리팹을 선택!
-            GameObject prefabToUse = (offset == Vector2Int.zero) ? centerPrefab : sidePrefab;
+            // 🌟 1. 일단 무조건 모든 칸에 자투리(Side) 바닥을 깝니다!
+            GameObject baseCell = Instantiate(sidePrefab, cellWorldPos, Quaternion.identity);
+            baseCell.transform.SetParent(buildingParent.transform);
 
-            // 선택된 프리팹으로 소환!
-            GameObject cellPart = Instantiate(prefabToUse, cellWorldPos, Quaternion.identity);
-            cellPart.transform.SetParent(buildingParent.transform);
+            // 🌟 2. 마우스가 있는 중심(0,0) 칸이라면, 그 위에 중앙(Center) 프리팹을 추가로 띄웁니다!
+            if (offset == Vector2Int.zero)
+            {
+                GameObject centerOverlay = Instantiate(centerPrefab, cellWorldPos, Quaternion.identity);
+                centerOverlay.transform.SetParent(buildingParent.transform);
+
+                // (안전장치) 바닥이랑 겹쳐서 깜빡거리지 않게 Z축을 살짝 앞(-0.1)으로 당겨줍니다.
+                Vector3 localPos = centerOverlay.transform.localPosition;
+                centerOverlay.transform.localPosition = new Vector3(localPos.x, localPos.y, -0.1f);
+            }
 
             boardData[arrayIdx.x, arrayIdx.y] = new BlockData
             {
@@ -650,15 +658,14 @@ public class GridManager : MonoBehaviour
                     : new BlockAttribute(colorID, shapeID),
                 isGrouped = false,
                 groupID = 0,
-                blockObject = cellPart
+                blockObject = baseCell // 데이터상으로는 바닥(baseCell)을 연결해 둡니다.
             };
 
             buildingObjects[arrayIdx.x, arrayIdx.y] = buildingParent;
             footprint?.Add(arrayIdx);
         }
 
-        // 특수 블럭이면 Registry 에 등록 → 효과 Activate. PowerManager 계산 전에 등록해야
-        // Global/Zone 스코프 효과가 첫 정산부터 반영된다.
+        // 특수 블럭 등록 등 나머지 로직은 그대로 유지!
         if (specialDef != null)
         {
             int zoneId = ZoneServiceLocator.Current.GetZoneIdFromCell(anchorArray);
@@ -1295,17 +1302,32 @@ public class GridManager : MonoBehaviour
         {
             Vector3 localPos = groundTilemap.layoutGrid.CellToLocal((Vector3Int)offset);
 
-            // 🌟 [핵심 변경점] 유령을 그릴 때도 중앙과 자투리를 구분!
-            GameObject prefabToUse = (offset == Vector2Int.zero) ? centerPrefab : sidePrefab;
+            // 🌟 1. 모든 칸에 자투리(Side) 유령 생성
+            GameObject baseGhost = Instantiate(sidePrefab, localPos, Quaternion.identity);
+            baseGhost.transform.SetParent(parent.transform, false);
 
-            GameObject part = Instantiate(prefabToUse, localPos, Quaternion.identity);
-            part.transform.SetParent(parent.transform, false);
-
-            SpriteRenderer sr = part.GetComponent<SpriteRenderer>();
+            SpriteRenderer sr = baseGhost.GetComponent<SpriteRenderer>();
             if (sr != null)
             {
                 sr.color = tint;
                 sr.sortingOrder = 10;
+            }
+
+            // 🌟 2. 중심(0,0) 칸에 중앙(Center) 유령 추가 생성
+            if (offset == Vector2Int.zero)
+            {
+                // Z축을 살짝 당겨서 생성합니다 (-0.1f)
+                Vector3 overlayPos = new Vector3(localPos.x, localPos.y, -0.1f);
+                GameObject centerGhost = Instantiate(centerPrefab, overlayPos, Quaternion.identity);
+                centerGhost.transform.SetParent(parent.transform, false);
+
+                SpriteRenderer centerSr = centerGhost.GetComponent<SpriteRenderer>();
+                if (centerSr != null)
+                {
+                    centerSr.color = tint;
+                    // 🌟 바닥 유령(10)보다 레이어를 높게(11) 설정해서 완벽하게 위에 보이게 합니다.
+                    centerSr.sortingOrder = 11;
+                }
             }
         }
 

@@ -10,10 +10,10 @@ GameObject:
   m_Component:
   - component: {fileID: 369180015907483581}
   - component: {fileID: 5107874812311623541}
-  - component: {fileID: -1379195316630268208}
-  - component: {fileID: -8566885211152965727}
+  - component: {fileID: 3767716886078388603}
+  - component: {fileID: -1501057855598374312}
   m_Layer: 0
-  m_Name: Elec2B4
+  m_Name: Icon5
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -83,8 +83,8 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 1
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 6561048772135960761, guid: 5655db8aff460f54eb6eee945ed2e62d, type: 3}
-  m_Color: {r: 0, g: 0.1254902, b: 1, a: 1}
+  m_Sprite: {fileID: -4343624942091216341, guid: 228b46be2d243284e91085924cf985a5, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -93,7 +93,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
---- !u!61 &-1379195316630268208
+--- !u!61 &3767716886078388603
 BoxCollider2D:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -131,7 +131,7 @@ BoxCollider2D:
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 1, y: 1}
+    oldSize: {x: 0.6525, y: 0.7175}
     newSize: {x: 1, y: 1}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
@@ -139,7 +139,7 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 1, y: 1}
   m_EdgeRadius: 0
---- !u!114 &-8566885211152965727
+--- !u!114 &-1501057855598374312
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -155,3 +155,7 @@ MonoBehaviour:
   outlineColor: {r: 0, g: 0, b: 0, a: 1}
   outlineThickness: 0.05
   outlineMaterial: {fileID: 0}
+  focusedScaleMultiplier: 1.25
+  dimmedBrightness: 0.22
+  spotlightTransitionDuration: 0.18
+  flashScaleMultiplier: 1.35

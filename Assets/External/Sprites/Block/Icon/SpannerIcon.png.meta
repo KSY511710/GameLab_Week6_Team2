@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: e81a52176e72d904c84c69778660b237
+guid: 228b46be2d243284e91085924cf985a5
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 2916901809663867759
-    second: GreenBattery_0
+      213: -4343624942091216341
+    second: SpannerIcon_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: GreenBattery_0
+      name: SpannerIcon_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 0
-        width: 800
-        height: 880
+        x: 139
+        y: 215
+        width: 522
+        height: 574
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: f6b75b1ddbaea7820800000000000000
-      internalID: 2916901809663867759
+      spriteID: b2a5021f02858b3c0800000000000000
+      internalID: -4343624942091216341
       vertices: []
       indices: 
       edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      GreenBattery_0: 2916901809663867759
+      SpannerIcon_0: -4343624942091216341
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
