@@ -3,6 +3,9 @@ using TMPro;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Special.Data;
+using Special.Integration;
+using Special.Runtime;
 
 // ==========================================
 //   [데이터 명찰 클래스들]
@@ -12,6 +15,8 @@ public class BlockAttribute
 {
     public int colorID;  // 색상 (1: 빨강, 2: 파랑 등 / 0: 색상 없음)
     public int shapeID;  // 모양 (당장 안 써도 0으로 기본값 세팅)
+    // 특수 블럭이면 비null. 일반 블럭 경로를 보존하기 위해 기본은 null.
+    [System.NonSerialized] public SpecialBlockDefinition specialDef;
 
     public BlockAttribute(int color)
     {
@@ -23,6 +28,13 @@ public class BlockAttribute
     {
         colorID = color;
         shapeID = shape;
+    }
+
+    public BlockAttribute(int color, int shape, SpecialBlockDefinition def)
+    {
+        colorID = color;
+        shapeID = shape;
+        specialDef = def;
     }
 }
 
@@ -52,6 +64,8 @@ public class GroupInfo
     public float colorMultiplier;
     public Color dominantRealColor;
     public List<PlacedBlockVisual> members;
+    // 특수 블럭 효과가 Scope 판정에 사용 (배열 인덱스 좌표).
+    public List<Vector2Int> clusterPositions;
 }
 
 // ==========================================
@@ -104,8 +118,7 @@ public class PowerManager : MonoBehaviour
             {
                 BlockData cell = board[x, y];
 
-                // 빈 칸이 아니고, 색상이 있으며(>0), 아직 그룹이 아닌 블록 탐색
-                if (cell != null && cell.attribute.colorID > 0 && !cell.isGrouped && !visited[x, y])
+                if (cell != null && IsEligibleForGrouping(cell) && !cell.isGrouped && !visited[x, y])
                 {
                     List<Vector2Int> cluster = GetUnlockedCluster(x, y, board, visited, width, height);
 
@@ -137,6 +150,15 @@ public class PowerManager : MonoBehaviour
         }
     }
 
+    // 그룹에 참여할 수 있는 셀인지 판정. Independent role 특수 블럭은 BFS 에서 제외.
+    private static bool IsEligibleForGrouping(BlockData cell)
+    {
+        if (cell.attribute.colorID <= 0) return false;
+        SpecialBlockDefinition def = cell.attribute.specialDef;
+        if (def != null && def.role == SpecialBlockRole.Independent) return false;
+        return true;
+    }
+
     // BFS 덩어리 탐색
     private List<Vector2Int> GetUnlockedCluster(int startX, int startY, BlockData[,] board, bool[,] visited, int width, int height)
     {
@@ -162,7 +184,7 @@ public class PowerManager : MonoBehaviour
                 {
                     BlockData nextCell = board[nextX, nextY];
 
-                    if (nextCell != null && nextCell.attribute.colorID > 0 && !nextCell.isGrouped && !visited[nextX, nextY])
+                    if (nextCell != null && IsEligibleForGrouping(nextCell) && !nextCell.isGrouped && !visited[nextX, nextY])
                     {
                         visited[nextX, nextY] = true;
                         queue.Enqueue(new Vector2Int(nextX, nextY));
@@ -176,6 +198,9 @@ public class PowerManager : MonoBehaviour
     // 새로운 속성 판정 시스템
     private void CreateNewGroup(List<Vector2Int> cluster, BlockData[,] board)
     {
+        // MultiPrimary 특수 블럭의 colorID 를 주변 최다 색으로 확정해야 이후 color 카운트가 정확하다.
+        SpecialBlockResolver.ResolveGroupColors(cluster, board);
+
         Dictionary<int, int> colorCounts = new Dictionary<int, int>();
         HashSet<int> uniqueParts = new HashSet<int>();
 
@@ -204,7 +229,19 @@ public class PowerManager : MonoBehaviour
         int restColorCount = cluster.Count - maxColorCount;
         float colorMultiplier = 1f + (maxColorCount - restColorCount) * 0.2f;
 
-        float finalPower = (baseProduction + uniquePartsCount) * completionMultiplier * colorMultiplier;
+        // 효과 훅: PowerCalculationContext 에 누적 후 최종식에 반영. 효과가 없으면 기존 공식과 동일.
+        PowerCalculationContext ctx = new PowerCalculationContext
+        {
+            BaseProductionRaw = baseProduction,
+            UniquePartsRaw = uniquePartsCount,
+            CompletionMultiplierRaw = completionMultiplier,
+            ColorMultiplierRaw = colorMultiplier,
+            ClusterPositions = cluster
+        };
+        EffectRuntime.Instance.ApplyPowerHooks(ctx);
+
+        float finalPower = ctx.Compute();
+        // float finalPower = (baseProduction + uniquePartsCount) * completionMultiplier * colorMultiplier;
         float baseRatio = ResourceManager.Instance != null ? ResourceManager.Instance.ExchangeRatio : 10f;
         float currentRatio = baseRatio;
         float estimatedMoney = finalPower / currentRatio;
@@ -251,7 +288,8 @@ public class PowerManager : MonoBehaviour
             completionMultiplier = completionMultiplier,
             colorMultiplier = colorMultiplier,
             dominantRealColor = dominantRealColor,
-            members = currentGroupVisuals
+            members = currentGroupVisuals,
+            clusterPositions = new List<Vector2Int>(cluster)
         };
 
         string debugMsg = $"<color=#00FFFF><b>[전력 정산 영수증 - 그룹 {nextGroupID}]</b></color>\n" +
@@ -264,6 +302,17 @@ public class PowerManager : MonoBehaviour
 
         activeGroups.Add(newGroup);
         nextGroupID++;
+
+        // 특수 블럭의 groupId 갱신 + OwnPowerPlant 스코프 효과 활성 신호
+        foreach (Vector2Int pos in cluster)
+        {
+            BlockData cell = board[pos.x, pos.y];
+            if (cell?.attribute?.specialDef == null) continue;
+            SpecialBlockInstance inst = SpecialBlockRegistry.Instance.FindByFootprintCell(pos);
+            if (inst != null) inst.groupId = newGroup.groupID;
+        }
+        EffectRuntime.Instance.NotifyGroupFormed(newGroup);
+
         if (PowerAnimationSequencer.Instance != null)
         {
             PowerAnimationSequencer.Instance.EnqueueAnimation(newGroup);
@@ -370,35 +419,46 @@ public class PowerManager : MonoBehaviour
     }
     public void ProceedToNextDay()
     {
-        if (IsAnimating)
+        if (IsAnimating) return;
+
+        SettlementData data = new SettlementData();
+        data.totalMoneyCap = ResourceManager.Instance != null ? ResourceManager.Instance.RemainingExchangeCap : 100f;
+
+        // 1. 빨/파/초 그룹 생산량 합산
+        foreach (GroupInfo group in activeGroups)
         {
-            Debug.LogWarning("애니메이션 재생 중입니다! 잠시 후 눌러주세요.");
-            return;
+            if (group.finalColor == 1) { data.redPower += group.groupPower; data.redMoney += group.estimatedMoneyGen; }
+            else if (group.finalColor == 2) { data.bluePower += group.groupPower; data.blueMoney += group.estimatedMoneyGen; }
+            else if (group.finalColor == 3) { data.greenPower += group.groupPower; data.greenMoney += group.estimatedMoneyGen; }
         }
 
-        if (PowerAnimationSequencer.Instance != null)
+        // 🌟 2. 자투리(Scrap) 생산량 및 예상 수익 계산
+        // 전체 전력에서 그룹이 생산한 전력을 모두 빼면 자투리 전력이 남습니다.
+        data.scrapPower = totalPower - (data.redPower + data.bluePower + data.greenPower);
+
+        // 자투리 전력은 특별 우대 환율 없이 '기본 환율'로만 돈으로 바뀝니다.
+        float baseRatio = ResourceManager.Instance != null ? ResourceManager.Instance.ExchangeRatio : 10f;
+        data.scrapMoney = data.scrapPower / baseRatio;
+
+        // 3. 애니메이션 재생
+        // NotifyDailySettle 은 두 경로 모두에서 발화돼야 ProduceFromEmptyCellsEffect 같은
+        // DailySettle 훅이 정상 동작한다 (SettlementUI 가 있을 때만 동작하면 안 됨).
+        if (SettlementUIController.Instance != null)
         {
-            // 🌟 시퀀서에게 "영수증 연출 쫙 보여줘! 그리고 다 끝나면() 안의 명령을 실행해!" 라고 넘깁니다.
-            PowerAnimationSequencer.Instance.PlayDayEndSequence(
-                activeGroups,
-                LastUngroupedCount,
-                totalPower,
-                () =>
-                {
-                    // 이 안의 코드는 영수증 연출이 다~ 끝나고 화면이 닫힌 뒤에 실행됩니다.
-                    CommitYesterdayProduction(totalPower);
-                    if (ResourceManager.Instance != null)
-                    {
-                        ResourceManager.Instance.ProcessNextDay();
-                        Debug.Log($"🌙 정산 완료! 다음 날이 시작됩니다. (어제 발전량: {totalPower} GWh)");
-                    }
-                }
-            );
+            SetAnimating(true);
+
+            SettlementUIController.Instance.PlaySettlementAnimation(data, () =>
+            {
+                CommitYesterdayProduction(totalPower);
+                EffectRuntime.Instance.NotifyDailySettle();
+                if (ResourceManager.Instance != null) ResourceManager.Instance.ProcessNextDay();
+                SetAnimating(false);
+            });
         }
         else
         {
-            // 혹시 시퀀서가 씬에 없을 경우를 대비한 안전 장치 (바로 넘김)
             CommitYesterdayProduction(totalPower);
+            EffectRuntime.Instance.NotifyDailySettle();
             if (ResourceManager.Instance != null) ResourceManager.Instance.ProcessNextDay();
         }
     }

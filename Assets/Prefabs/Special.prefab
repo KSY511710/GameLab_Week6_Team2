@@ -10,10 +10,10 @@ GameObject:
   m_Component:
   - component: {fileID: 369180015907483581}
   - component: {fileID: 5107874812311623541}
-  - component: {fileID: 1840899510811265410}
-  - component: {fileID: -3723074858870538976}
+  - component: {fileID: -5455683320300179250}
+  - component: {fileID: -1433705233219287579}
   m_Layer: 0
-  m_Name: Elec2B2
+  m_Name: Special
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -83,8 +83,8 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 1
   m_MaskInteraction: 0
-  m_Sprite: {fileID: -4357823158253915379, guid: 710ba5b5ccc36f34ba0b7e7f44564e9a, type: 3}
-  m_Color: {r: 0, g: 0.1254902, b: 1, a: 1}
+  m_Sprite: {fileID: -760248212612917335, guid: e652722985d89634e9c773ddc7e7fda0, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -93,7 +93,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
---- !u!61 &1840899510811265410
+--- !u!61 &-5455683320300179250
 BoxCollider2D:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -139,7 +139,7 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 1, y: 1}
   m_EdgeRadius: 0
---- !u!114 &-3723074858870538976
+--- !u!114 &-1433705233219287579
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -155,3 +155,7 @@ MonoBehaviour:
   outlineColor: {r: 0, g: 0, b: 0, a: 1}
   outlineThickness: 0.05
   outlineMaterial: {fileID: 0}
+  focusedScaleMultiplier: 1.25
+  dimmedBrightness: 0.22
+  spotlightTransitionDuration: 0.18
+  flashScaleMultiplier: 1.35
