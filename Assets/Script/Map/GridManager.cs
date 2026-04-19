@@ -530,7 +530,8 @@ public class GridManager : MonoBehaviour
     /// - 해당 셀이 실제로 열린 구역에 속하는지 본다.
     ///
     /// 특수 블럭(<paramref name="specialDef"/>)이 들어오면 추가로
-    /// - Independent role 은 그룹 인접 금지 규칙을 우회한다 (그룹화 자체에 참여하지 않으므로 인접 제약이 의미 없음).
+    /// - Independent role 만 그룹 인접 금지 규칙을 우회한다 (그룹 자체에 참여하지 않는 "공용 부품" 성격이라 인접 제약이 의미 없음).
+    /// - PowerPlant role 은 "발전소" 판정을 받으므로 다른 그룹과 마찬가지로 인접 금지 규칙을 준수해야 한다.
     /// - SpecialBlockRegistry 의 게임/구역 한도 검사를 통과해야 한다.
     /// </summary>
     /// <param name="startCell">배치 시작 셀</param>
@@ -542,7 +543,7 @@ public class GridManager : MonoBehaviour
         // Next Day 시퀀스 진행 중이면 placement-eligibility 자체를 거부 (블럭 소진 방지)
         if (PowerManager.Instance != null && PowerManager.Instance.IsAnimating) return false;
 
-        // Independent 특수 블럭은 그룹 인접 금지 규칙을 적용하지 않는다.
+        // Independent 만 인접 금지 규칙을 우회. PowerPlant 는 그룹화된 블럭과 동일한 판정.
         bool skipAdjacencyCheck = specialDef != null && specialDef.role == SpecialBlockRole.Independent;
 
         // 🌟 8방향(상하좌우 + 대각선) 검사를 위한 방향 배열
@@ -563,8 +564,11 @@ public class GridManager : MonoBehaviour
             Vector3Int worldCellForCheck = new Vector3Int(startCell.x + offset.x, startCell.y + offset.y, 0);
             if (!IsWorldCellUnlocked(worldCellForCheck)) return false;
 
-            // 2. 놓으려는 자리에 이미 블럭이 있는지 검사
-            if (boardData[arrayIdx.x, arrayIdx.y] != null && boardData[arrayIdx.x, arrayIdx.y].attribute.colorID > 0) return false;
+            // 2. 놓으려는 자리에 이미 블럭이 있는지 검사.
+            //    colorID > 0 만 보면 OffPalette PowerPlant(colorID=0) 셀 위에 일반 블럭이 겹쳐져도 통과되던 버그 방지.
+            //    특수 블럭(specialDef) 이 점유 중인 셀도 동일하게 겹침을 차단한다.
+            BlockData occupant = boardData[arrayIdx.x, arrayIdx.y];
+            if (occupant != null && (occupant.attribute.colorID > 0 || occupant.attribute.specialDef != null)) return false;
 
             if (skipAdjacencyCheck) continue;
 

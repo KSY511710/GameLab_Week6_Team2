@@ -6,8 +6,11 @@ namespace Special.Effects.Assets
 {
     /// <summary>
     /// 예시 b) 범위 내 빈칸 수만큼 자기 자신이 전력 생산.
-    /// Independent 블럭이 쓰는 시나리오 — 그룹에 참여하지 않고 매일 정산 시 고정 보너스.
-    /// DailySettle 훅에서 ResourceManager 에 전력을 직접 지급한다.
+    /// PowerPlant role 블럭이 쓰는 표준 시나리오 — 일반 블럭과 BFS 로 섞이지 않고
+    /// 자기 footprint 로만 이루어진 솔로 그룹의 생산량을 본 효과가 매 프레임 산출한다.
+    /// EstimateLivePower 가 반환하는 값이 그대로 활성 그룹의 groupPower 로 쓰이며,
+    /// PowerManager.GetTotalPower 에 합산되어 PowerText 실시간 표시와 SettlementUIController
+    /// 색상 막대 양쪽에 즉시 반영된다. 별도의 HookProductionSettle / SubmitSpecialContribution 경로는 필요 없다.
     /// </summary>
     [CreateAssetMenu(menuName = "Special/Effects/Produce From Empty Cells")]
     public class ProduceFromEmptyCellsEffect : EffectAsset
@@ -16,25 +19,20 @@ namespace Special.Effects.Assets
 
         public override void Activate(SpecialBlockInstance owner, EffectRuntime runtime)
         {
-            runtime.HookDailySettle(owner, () =>
-            {
-                GridManager grid = Object.FindFirstObjectByType<GridManager>();
-                if (grid == null || ResourceManager.Instance == null) return;
-
-                var (emptyCount, _) = CollectEmpty(owner, grid);
-
-                int bonus = emptyCount * perEmptyCell;
-                if (bonus > 0)
-                {
-                    ResourceManager.Instance.AddElectric(bonus);
-                    Debug.Log($"[Special:{owner?.definition?.id}] 빈칸 {emptyCount}칸 → +{bonus} 전력");
-                }
-            });
+            /* PowerPlant 솔로 그룹 경로로 집계되므로 런타임 훅 등록은 불필요. */
         }
 
         public override void Deactivate(SpecialBlockInstance owner, EffectRuntime runtime)
         {
             /* EffectRuntime.UnhookAll(owner)가 SpecialBlockRegistry.DeactivateEffects에서 호출되며 정리됨. */
+        }
+
+        public override float EstimateLivePower(SpecialBlockInstance owner)
+        {
+            GridManager grid = Object.FindFirstObjectByType<GridManager>();
+            if (grid == null || owner == null) return 0f;
+            var (emptyCount, _) = CollectEmpty(owner, grid);
+            return emptyCount * perEmptyCell;
         }
 
         public override EffectPreview BuildPreview(SpecialBlockInstance owner)
@@ -54,7 +52,7 @@ namespace Special.Effects.Assets
 
         /// <summary>
         /// scope 범위 안에서 owner footprint 를 제외한 빈칸을 한 번의 순회로 수집.
-        /// 훅/프리뷰 양쪽에서 공유.
+        /// EstimateLivePower / BuildPreview 양쪽에서 공유.
         /// </summary>
         private (int count, List<Vector2Int> cells) CollectEmpty(SpecialBlockInstance owner, GridManager grid)
         {

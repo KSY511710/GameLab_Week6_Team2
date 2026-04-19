@@ -6,7 +6,8 @@ namespace Special.Integration
 {
     /// <summary>
     /// 그룹 확정 직전에 MultiPrimary 특수 블럭의 colorID 를 현재 클러스터의 최다 색상으로 재할당.
-    /// OffPalette 는 그룹에 참여하지 않거나(Role=Independent) 별도 ID(>=100) 로 구분되어 여기 로직 밖.
+    /// Grouping 이외 role(Independent / PowerPlant) 이거나 OffPalette/별도 ID(>=100) 인 블럭은
+    /// 애초에 BFS 클러스터에 포함되지 않으므로 이 로직 밖(PowerPlant 는 FormPowerPlantSoloGroups)에서 처리된다.
     /// </summary>
     public static class SpecialBlockResolver
     {

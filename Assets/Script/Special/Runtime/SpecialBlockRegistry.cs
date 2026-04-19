@@ -29,6 +29,14 @@ namespace Special.Runtime
             }
         }
 
+        // OnDisable/OnDestroy 등 씬 종료 경로에서 안전하게 조회용으로만 사용. 없으면 null 반환, 새로 생성하지 않음.
+        public static SpecialBlockRegistry InstanceOrNull => _instance;
+
+        private void OnDestroy()
+        {
+            if (_instance == this) _instance = null;
+        }
+
         private readonly Dictionary<string, int> installCountByDefId = new();
         private readonly Dictionary<(string defId, int zoneId), int> installCountByZone = new();
         private readonly List<SpecialBlockInstance> installed = new();

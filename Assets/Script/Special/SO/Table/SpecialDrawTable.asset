@@ -16,3 +16,6 @@ MonoBehaviour:
   - definition: {fileID: 11400000, guid: 978424bdfb1174d4fbe874a412fe3b15, type: 2}
     weight: 1
     isEnabled: 1
+  - definition: {fileID: 11400000, guid: 9fb5fff5b1660a343904e3ec8ae9d71f, type: 2}
+    weight: 1
+    isEnabled: 1

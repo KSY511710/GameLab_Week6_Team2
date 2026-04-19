@@ -457,9 +457,10 @@ public class PowerAnimationSequencer : MonoBehaviour
 
     private void OnDisable()
     {
-        if (subscribedToRegistry && SpecialBlockRegistry.Instance != null)
+        var registry = SpecialBlockRegistry.InstanceOrNull;
+        if (subscribedToRegistry && registry != null)
         {
-            SpecialBlockRegistry.Instance.OnSpecialPlaced -= HandleSpecialPlaced;
+            registry.OnSpecialPlaced -= HandleSpecialPlaced;
             subscribedToRegistry = false;
         }
 

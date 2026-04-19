@@ -22,6 +22,7 @@ namespace Special.Runtime
 
         private readonly List<Hook<Action<PowerCalculationContext>>> powerHooks = new();
         private readonly List<Hook<Action<GroupInfo>>> groupFormedHooks = new();
+        private readonly List<Hook<Action>> productionSettleHooks = new();
         private readonly List<Hook<Action>> dailySettleHooks = new();
         private readonly List<Hook<Action>> continuousHooks = new();
 
@@ -32,6 +33,14 @@ namespace Special.Runtime
 
         public void HookOnGroupFormed(SpecialBlockInstance owner, Action<GroupInfo> cb)
             => groupFormedHooks.Add(new Hook<Action<GroupInfo>> { Owner = owner, Callback = cb });
+
+        /// <summary>
+        /// 일일 정산 애니메이션 '직전' 에 발화. 효과는 여기서
+        /// PowerManager.SubmitSpecialContribution 을 호출해 자신의 일일 생산량을 등록한다.
+        /// DailySettle 과 달리 이 단계의 결과는 SettlementUIController 의 막대그래프에 반영된다.
+        /// </summary>
+        public void HookProductionSettle(SpecialBlockInstance owner, Action cb)
+            => productionSettleHooks.Add(new Hook<Action> { Owner = owner, Callback = cb });
 
         public void HookDailySettle(SpecialBlockInstance owner, Action cb)
             => dailySettleHooks.Add(new Hook<Action> { Owner = owner, Callback = cb });
@@ -44,6 +53,7 @@ namespace Special.Runtime
         {
             powerHooks.RemoveAll(h => h.Owner == owner);
             groupFormedHooks.RemoveAll(h => h.Owner == owner);
+            productionSettleHooks.RemoveAll(h => h.Owner == owner);
             dailySettleHooks.RemoveAll(h => h.Owner == owner);
             continuousHooks.RemoveAll(h => h.Owner == owner);
         }
@@ -64,6 +74,19 @@ namespace Special.Runtime
             for (int i = 0; i < groupFormedHooks.Count; i++)
             {
                 try { groupFormedHooks[i].Callback?.Invoke(group); }
+                catch (Exception e) { Debug.LogException(e); }
+            }
+        }
+
+        /// <summary>
+        /// PowerManager.ProceedToNextDay 가 SettlementData 를 빌드하기 직전에 호출.
+        /// 이 시점에 등록된 모든 효과는 자신의 오늘자 생산 기여분을 PowerManager 에 제출해야 한다.
+        /// </summary>
+        public void NotifyProductionSettle()
+        {
+            for (int i = 0; i < productionSettleHooks.Count; i++)
+            {
+                try { productionSettleHooks[i].Callback?.Invoke(); }
                 catch (Exception e) { Debug.LogException(e); }
             }
         }

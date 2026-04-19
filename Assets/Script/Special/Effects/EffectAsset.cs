@@ -28,6 +28,15 @@ namespace Special.Effects
         public abstract void Deactivate(SpecialBlockInstance owner, EffectRuntime runtime);
 
         /// <summary>
+        /// PowerPlant role 의 솔로 그룹이 "현재 이 효과가 지금 당장 얼마나 생산 중인지" 를 질의할 때 사용.
+        /// Grouping 계열 그룹에는 영향을 주지 않으며(그쪽은 PowerCalculationContext 훅으로 조율), 기본값은 0.
+        /// PowerPlant 에서 쓰이는 효과만 오버라이드해 실제 생산량을 반환한다.
+        /// 반환값은 PowerManager.CalculateTotalPower / RecalculateAllGroupPowers 흐름에서 매 프레임 재질의되므로
+        /// 보드 상태에 따라 자연스럽게 PowerText 실시간 합계에도 반영된다.
+        /// </summary>
+        public virtual float EstimateLivePower(SpecialBlockInstance owner) => 0f;
+
+        /// <summary>
         /// 시퀀서가 호출. 효과별 계산 결과를 사람이 읽을 수 있게 풀어 EffectPreview 에 담아 반환한다.
         /// 기본 구현은 description 한 줄과 scope 기반의 영역 셀만 채워준다.
         /// 하위 클래스는 실제 수치(범위 내 발전소 수, 빈칸 수 등)를 계산해 steps 에 추가하는 것을 권장.

@@ -15,7 +15,19 @@ namespace Special.Data
         All = Red | Blue | Yellow
     }
 
-    public enum SpecialBlockRole { Grouping, Independent }
+    /// <summary>
+    /// 특수 블럭이 정산 파이프라인에서 취급되는 방식.
+    /// Grouping : 일반 발전소처럼 주변 블럭과 BFS 로 그룹을 형성한다.
+    /// Independent : 그룹 BFS 와 인접 금지 규칙 양쪽에서 제외되는 "공용 부품" 성격의 블럭.
+    ///               ungrouped 기본 +1 생산은 유지되므로 SettlementData 의 scrap 에 합산된다.
+    /// PowerPlant : "그 자체로 하나의 발전소" 인 특수 블럭. 색상 BFS 로 일반 블럭과
+    ///              합쳐지지는 않지만, 설치 직후 자기 footprint 만으로 이루어진 솔로 그룹이
+    ///              자동 생성되어 activeGroups 에 들어간다. 즉 "그룹화된 블럭" 과 동일한 판정
+    ///              (인접 배치 금지, OwnPowerPlant/AdjacentPowerPlant 스코프 대상)을 받는다.
+    ///              일일 생산량은 각 Effect 의 EstimateLivePower 합산으로 산출되어
+    ///              PowerText 실시간 합계와 SettlementUIController 색상 막대에 그대로 반영된다.
+    /// </summary>
+    public enum SpecialBlockRole { Grouping, Independent, PowerPlant }
 
     [CreateAssetMenu(menuName = "Special/Block Definition", fileName = "SpecialBlock_")]
     public class SpecialBlockDefinition : ScriptableObject

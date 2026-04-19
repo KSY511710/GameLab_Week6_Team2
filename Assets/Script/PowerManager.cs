@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Special.Data;
+using Special.Effects;
 using Special.Integration;
 using Special.Runtime;
 
@@ -66,6 +67,28 @@ public class GroupInfo
     public List<PlacedBlockVisual> members;
     // 특수 블럭 효과가 Scope 판정에 사용 (배열 인덱스 좌표).
     public List<Vector2Int> clusterPositions;
+
+    /// <summary>
+    /// PowerPlant role 특수 블럭이 자기 footprint 로만 이루어진 솔로 그룹을 형성했을 때 true.
+    /// BFS 가 만든 "실제 그룹" 과 라이브 파워 갱신/정산 규칙을 구분하기 위한 플래그.
+    /// </summary>
+    public bool isPowerPlantSolo;
+}
+
+/// <summary>
+/// 효과(Effect) 가 ProductionSettle 훅에서 제출하는 일일 생산 기여분.
+/// PowerManager.SubmitSpecialContribution 으로 등록되며
+/// SettlementUIController 정산 단계에서 색상 버킷(또는 자투리)에 합산된다.
+/// </summary>
+public class SpecialPowerContribution
+{
+    public SpecialBlockInstance owner;
+    public SpecialBlockDefinition definition;   // 디버깅/확장용 백참조.
+    public int colorID;                          // 1=Red, 2=Blue, 3=Yellow, 0=자투리/OffPalette
+    public float power;                          // GWh
+    public float appliedExchangeRatio;           // 돈 환산 시 사용한 비율(기본 환율)
+    public float estimatedMoney;                 // power / appliedExchangeRatio
+    public string sourceTag;                     // 디버그 로그용 소스 식별자(효과 이름 등)
 }
 
 // ==========================================
@@ -90,6 +113,11 @@ public class PowerManager : MonoBehaviour
     // 시퀀서 등 외부에서 보드 배열을 다시 순회하지 않고 미그룹 블럭에 접근하도록 캐시
     public int LastUngroupedCount { get; private set; }
     public List<PlacedBlockVisual> LastUngroupedVisuals { get; private set; } = new List<PlacedBlockVisual>();
+
+    // ProductionSettle 훅에서 효과들이 제출하는 일일 기여 누적.
+    // ProceedToNextDay 시작 시 초기화되어 정산 1회 주기 동안만 유효.
+    private readonly List<SpecialPowerContribution> pendingContributions = new List<SpecialPowerContribution>();
+    public IReadOnlyList<SpecialPowerContribution> PendingContributions => pendingContributions;
 
     public bool IsAnimating { get; private set; }
 
@@ -148,15 +176,141 @@ public class PowerManager : MonoBehaviour
                 }
             }
         }
+
+        // BFS 와 독립적으로, PowerPlant role 블럭은 자기 footprint 로만 이루어진 솔로 그룹을 형성한다.
+        // 이 단계에서 isGrouped=true 를 세팅하므로 이후 설치 인접 금지/ScopeEvaluator 판정이 일관된다.
+        FormPowerPlantSoloGroups(board);
     }
 
-    // 그룹에 참여할 수 있는 셀인지 판정. Independent role 특수 블럭은 BFS 에서 제외.
+    // 그룹에 참여할 수 있는 셀인지 판정. Grouping 이외 role(Independent / PowerPlant) 은 BFS 에서 제외.
+    // PowerPlant 는 별도로 FormPowerPlantSoloGroups 에서 솔로 그룹을 만든다.
     private static bool IsEligibleForGrouping(BlockData cell)
     {
         if (cell.attribute.colorID <= 0) return false;
         SpecialBlockDefinition def = cell.attribute.specialDef;
-        if (def != null && def.role == SpecialBlockRole.Independent) return false;
+        if (def != null && def.role != SpecialBlockRole.Grouping) return false;
         return true;
+    }
+
+    // PowerPlant role 은 솔로 그룹에서 별도 groupPower 로 반영되므로 ungrouped 기본 +1 대상에서 제외.
+    // Independent 는 ungrouped +1 로 scrap 에 합산된다.
+    private static bool CountsAsUngroupedBase(BlockData cell)
+    {
+        if (cell == null || cell.attribute.colorID <= 0 || cell.isGrouped) return false;
+        SpecialBlockDefinition def = cell.attribute.specialDef;
+        if (def != null && def.role == SpecialBlockRole.PowerPlant) return false;
+        return true;
+    }
+
+    /// <summary>
+    /// 설치된 PowerPlant 인스턴스 중 아직 groupId 가 없는 것들을 각자 솔로 그룹으로 묶는다.
+    /// 솔로 그룹은 다음 세 가지 역할을 동시에 수행한다.
+    /// 1) cell.isGrouped=true 로 세팅 → GridManager 인접 금지 규칙이 PowerPlant 주변 배치를 차단.
+    /// 2) activeGroups 에 GroupInfo 로 포함 → ScopeEvaluator 의 OwnPowerPlant / AdjacentPowerPlant /
+    ///    GroupWithinRange / GroupInZone 질의가 PowerPlant 를 "발전소" 로 인지.
+    /// 3) groupPower = sum(EffectAsset.EstimateLivePower) → PowerText 실시간 합계와
+    ///    SettlementUIController 색상 막대에 그대로 반영.
+    /// Animation Sequencer 에는 enqueue 하지 않는다. 솔로 그룹 형성은 매 프레임/매 설치마다 일어날 수 있고,
+    /// CreateNewGroup 처럼 "오늘의 연출" 대상이 아니기 때문.
+    /// </summary>
+    private void FormPowerPlantSoloGroups(BlockData[,] board)
+    {
+        if (SpecialBlockRegistry.Instance == null) return;
+        int bw = board.GetLength(0);
+        int bh = board.GetLength(1);
+
+        IReadOnlyList<SpecialBlockInstance> installed = SpecialBlockRegistry.Instance.Installed;
+        for (int i = 0; i < installed.Count; i++)
+        {
+            SpecialBlockInstance inst = installed[i];
+            if (inst == null) continue;
+            SpecialBlockDefinition def = inst.definition;
+            if (def == null || def.role != SpecialBlockRole.PowerPlant) continue;
+            if (inst.groupId > 0) continue;
+
+            List<Vector2Int> footprintCells = new List<Vector2Int>(inst.footprint.Count);
+            List<PlacedBlockVisual> visuals = new List<PlacedBlockVisual>();
+
+            for (int f = 0; f < inst.footprint.Count; f++)
+            {
+                Vector2Int pos = inst.footprint[f];
+                if (pos.x < 0 || pos.x >= bw || pos.y < 0 || pos.y >= bh) continue;
+                BlockData cell = board[pos.x, pos.y];
+                if (cell == null) continue;
+
+                cell.isGrouped = true;
+                cell.groupID = nextGroupID;
+                footprintCells.Add(pos);
+
+                if (cell.blockObject != null)
+                {
+                    PlacedBlockVisual v = cell.blockObject.GetComponent<PlacedBlockVisual>();
+                    if (v != null) visuals.Add(v);
+                }
+            }
+            if (footprintCells.Count == 0) continue;
+
+            int colorID = ResolveContributionColorID(def);
+            Color realColor = ColorIDToRealColor(colorID);
+            float livePower = EstimateLivePowerOf(inst);
+            float baseRatio = ResourceManager.Instance != null ? ResourceManager.Instance.ExchangeRatio : 10f;
+            if (baseRatio <= 0f) baseRatio = 1f;
+
+            GroupInfo solo = new GroupInfo
+            {
+                groupID = nextGroupID,
+                blockSize = footprintCells.Count,
+                finalColor = colorID,
+                finalShape = def.uniqueShapeId,
+                formationMultiplier = 0,
+                groupPower = livePower,
+                appliedExchangeRatio = baseRatio,
+                estimatedMoneyGen = baseRatio > 0f ? livePower / baseRatio : 0f,
+                baseProduction = footprintCells.Count,
+                uniqueParts = 0,
+                completionMultiplier = 0,
+                colorMultiplier = 1f,
+                dominantRealColor = realColor,
+                members = visuals,
+                clusterPositions = footprintCells,
+                isPowerPlantSolo = true
+            };
+
+            foreach (PlacedBlockVisual v in visuals)
+            {
+                v.SetGroupState(true, realColor, visuals);
+            }
+
+            activeGroups.Add(solo);
+            inst.groupId = nextGroupID;
+            nextGroupID++;
+
+            EffectRuntime.Instance.NotifyGroupFormed(solo);
+        }
+    }
+
+    private static Color ColorIDToRealColor(int colorID)
+    {
+        if (colorID == 1) return new Color(1f, 0.2f, 0.2f);
+        if (colorID == 2) return new Color(0.2f, 0.4f, 1f);
+        if (colorID == 3) return new Color(0.2f, 1f, 0.2f);
+        return Color.white;
+    }
+
+    private static float EstimateLivePowerOf(SpecialBlockInstance inst)
+    {
+        if (inst == null) return 0f;
+        float sum = 0f;
+        IReadOnlyList<IEffect> effects = inst.EffectInstances;
+        for (int i = 0; i < effects.Count; i++)
+        {
+            if (effects[i] is EffectAsset asset)
+            {
+                try { sum += asset.EstimateLivePower(inst); }
+                catch (Exception e) { Debug.LogException(e); }
+            }
+        }
+        return sum;
     }
 
     // BFS 덩어리 탐색
@@ -333,6 +487,7 @@ public class PowerManager : MonoBehaviour
         }
 
         // 미그룹 블럭 카운트와 비주얼 참조를 같은 패스에서 수집
+        // Electricity role 은 기본 +1 대상에서 제외 (생산은 효과가 SubmitSpecialContribution 으로 전달).
         LastUngroupedVisuals.Clear();
         int ungroupedBlocks = 0;
         for (int x = 0; x < width; x++)
@@ -340,7 +495,7 @@ public class PowerManager : MonoBehaviour
             for (int y = 0; y < height; y++)
             {
                 BlockData cell = board[x, y];
-                if (cell == null || cell.attribute.colorID <= 0 || cell.isGrouped) continue;
+                if (!CountsAsUngroupedBase(cell)) continue;
 
                 ungroupedBlocks++;
                 if (cell.blockObject != null)
@@ -365,19 +520,30 @@ public class PowerManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 현재 등록된 훅 상태를 기준으로 모든 활성 그룹의 groupPower / 예상 수익을 다시 계산한다.
-    /// 각 그룹이 CreateNewGroup 시점에 캐시해 둔 raw 중간값(baseProduction / uniqueParts / completionMultiplier / colorMultiplier)을 재사용하므로
-    /// BFS 재실행 없이 훅만 다시 반영된다. 특수 블럭 설치 후 CalculateTotalPower 가 호출되는 흐름에서 자동으로 실행된다.
+    /// 현재 등록된 훅/효과 상태를 기준으로 모든 활성 그룹의 groupPower / 예상 수익을 다시 계산한다.
+    /// - 일반 그룹 : CreateNewGroup 시점에 캐시해 둔 raw 중간값을 재사용해 PowerCalculationContext 훅만 다시 반영.
+    /// - PowerPlant 솔로 그룹 : 소유 인스턴스의 모든 EffectAsset.EstimateLivePower 합으로 매번 재산출.
+    ///   이 덕분에 "범위 내 빈칸이 변할 때마다" PowerText 실시간 합계가 즉시 갱신된다.
     /// </summary>
     public void RecalculateAllGroupPowers()
     {
         if (activeGroups == null || activeGroups.Count == 0) return;
         float baseRatio = ResourceManager.Instance != null ? ResourceManager.Instance.ExchangeRatio : 10f;
+        if (baseRatio <= 0f) baseRatio = 1f;
 
         for (int i = 0; i < activeGroups.Count; i++)
         {
             GroupInfo g = activeGroups[i];
             if (g == null || g.clusterPositions == null) continue;
+
+            if (g.isPowerPlantSolo)
+            {
+                SpecialBlockInstance owner = FindPowerPlantOwner(g);
+                g.groupPower = owner != null ? EstimateLivePowerOf(owner) : 0f;
+                g.appliedExchangeRatio = baseRatio;
+                g.estimatedMoneyGen = g.groupPower / baseRatio;
+                continue;
+            }
 
             PowerCalculationContext ctx = new PowerCalculationContext
             {
@@ -391,8 +557,16 @@ public class PowerManager : MonoBehaviour
 
             g.groupPower = ctx.Compute();
             g.appliedExchangeRatio = baseRatio;
-            g.estimatedMoneyGen = baseRatio > 0f ? g.groupPower / baseRatio : 0f;
+            g.estimatedMoneyGen = g.groupPower / baseRatio;
         }
+    }
+
+    /// <summary>PowerPlant 솔로 그룹에 대응되는 SpecialBlockInstance 역조회.</summary>
+    private static SpecialBlockInstance FindPowerPlantOwner(GroupInfo g)
+    {
+        if (g == null || g.clusterPositions == null || g.clusterPositions.Count == 0) return null;
+        if (SpecialBlockRegistry.Instance == null) return null;
+        return SpecialBlockRegistry.Instance.FindByFootprintCell(g.clusterPositions[0]);
     }
 
     /// <summary>시퀀서가 일일 정산 직후 호출. powerText에 표시될 "전날 발전량"을 갱신.</summary>
@@ -457,45 +631,172 @@ public class PowerManager : MonoBehaviour
     {
         if (IsAnimating) return;
 
-        SettlementData data = new SettlementData();
-        data.totalMoneyCap = ResourceManager.Instance != null ? ResourceManager.Instance.RemainingExchangeCap : 100f;
+        // 0. 정산 직전 라이브 파워 리프레시.
+        //    PowerPlant 솔로 그룹의 groupPower (= EstimateLivePower 합) 를 지금 이 순간 보드 상태 기준으로 재산출해
+        //    CalculateTotalPower 가 마지막으로 불린 이후 보드가 바뀌었어도 SettlementData 에 최신 값이 실리도록 한다.
+        RecalculateAllGroupPowers();
 
-        // 1. 빨/파/초 그룹 생산량 합산
-        foreach (GroupInfo group in activeGroups)
-        {
-            if (group.finalColor == 1) { data.redPower += group.groupPower; data.redMoney += group.estimatedMoneyGen; }
-            else if (group.finalColor == 2) { data.bluePower += group.groupPower; data.blueMoney += group.estimatedMoneyGen; }
-            else if (group.finalColor == 3) { data.greenPower += group.groupPower; data.greenMoney += group.estimatedMoneyGen; }
-        }
+        // 1. 효과별 일일 생산 기여분 수집 페이즈.
+        //    비-PowerPlant 효과가 ProductionSettle 훅에서 SubmitSpecialContribution 을 호출해 pendingContributions 를 채운다.
+        pendingContributions.Clear();
+        EffectRuntime.Instance.NotifyProductionSettle();
 
-        // 🌟 2. 자투리(Scrap) 생산량 및 예상 수익 계산
-        // 전체 전력에서 그룹이 생산한 전력을 모두 빼면 자투리 전력이 남습니다.
-        data.scrapPower = totalPower - (data.redPower + data.bluePower + data.greenPower);
+        // 2. 정산 데이터 빌드 (그룹 + 특수 기여 + 자투리).
+        SettlementData data = BuildSettlementData();
 
-        // 자투리 전력은 특별 우대 환율 없이 '기본 환율'로만 돈으로 바뀝니다.
-        float baseRatio = ResourceManager.Instance != null ? ResourceManager.Instance.ExchangeRatio : 10f;
-        data.scrapMoney = data.scrapPower / baseRatio;
-
-        // 3. 애니메이션 재생
-        // NotifyDailySettle 은 두 경로 모두에서 발화돼야 ProduceFromEmptyCellsEffect 같은
-        // DailySettle 훅이 정상 동작한다 (SettlementUI 가 있을 때만 동작하면 안 됨).
+        // 3. 애니메이션 & 사후 처리.
+        //    NotifyDailySettle 은 애니메이션 후 시각/타이머 계열 효과용으로 유지.
         if (SettlementUIController.Instance != null)
         {
             SetAnimating(true);
 
             SettlementUIController.Instance.PlaySettlementAnimation(data, () =>
             {
-                CommitYesterdayProduction(totalPower);
-                EffectRuntime.Instance.NotifyDailySettle();
-                if (ResourceManager.Instance != null) ResourceManager.Instance.ProcessNextDay();
+                FinalizeDailySettlement();
                 SetAnimating(false);
             });
         }
         else
         {
-            CommitYesterdayProduction(totalPower);
-            EffectRuntime.Instance.NotifyDailySettle();
-            if (ResourceManager.Instance != null) ResourceManager.Instance.ProcessNextDay();
+            FinalizeDailySettlement();
         }
+    }
+
+    /// <summary>
+    /// 정산 UI 에 전달할 SettlementData 빌더.
+    /// 집계 규칙:
+    /// - 색상(1/2/3) 을 가진 그룹(일반 BFS 그룹 + Single/MultiPrimary PowerPlant 솔로) 의 groupPower 는 red/blue/green 버킷에 합류.
+    /// - 색상이 없는 그룹(OffPalette PowerPlant 솔로 = finalColor 0) 의 groupPower 는 scrap 버킷에 합류.
+    ///   → PowerPlant 는 colorBinding 과 무관하게 항상 정산 UI 에 표시되어 플레이어가 자기 발전소의 기여를 볼 수 있다.
+    /// - 자투리의 기본치는 LastUngroupedCount (그룹화되지 않은 일반/Independent 블럭 1칸 = 1 GWh) 로 산출.
+    ///   PowerPlant 는 CountsAsUngroupedBase 에서 이미 제외되므로 이중 집계되지 않는다.
+    /// - 비-PowerPlant 효과가 제출한 pendingContributions 는 색상/자투리 버킷에 그대로 덧붙여진다.
+    /// </summary>
+    private SettlementData BuildSettlementData()
+    {
+        SettlementData data = new SettlementData
+        {
+            totalMoneyCap = ResourceManager.Instance != null ? ResourceManager.Instance.RemainingExchangeCap : 100f
+        };
+
+        float baseRatio = ResourceManager.Instance != null ? ResourceManager.Instance.ExchangeRatio : 10f;
+        if (baseRatio <= 0f) baseRatio = 1f;
+
+        float groupedRed = 0f, groupedBlue = 0f, groupedGreen = 0f;
+        float groupedRedMoney = 0f, groupedBlueMoney = 0f, groupedGreenMoney = 0f;
+        // 색상 없는 그룹(OffPalette PowerPlant 등) 은 scrap 버킷에 합류시켜 SettlementUI 에 반드시 노출되게 한다.
+        float groupedScrap = 0f, groupedScrapMoney = 0f;
+
+        foreach (GroupInfo group in activeGroups)
+        {
+            switch (group.finalColor)
+            {
+                case 1: groupedRed   += group.groupPower; groupedRedMoney   += group.estimatedMoneyGen; break;
+                case 2: groupedBlue  += group.groupPower; groupedBlueMoney  += group.estimatedMoneyGen; break;
+                case 3: groupedGreen += group.groupPower; groupedGreenMoney += group.estimatedMoneyGen; break;
+                default: groupedScrap += group.groupPower; groupedScrapMoney += group.estimatedMoneyGen; break;
+            }
+        }
+
+        // 자투리(Scrap) 기본: ungrouped 일반/Independent 블럭 1칸 = 1 GWh. PowerPlant 는 CountsAsUngroupedBase 에서 이미 제외됨.
+        float scrapBasePower = Mathf.Max(0f, (float)LastUngroupedCount) + groupedScrap;
+        float scrapBaseMoney = Mathf.Max(0f, (float)LastUngroupedCount) / baseRatio + groupedScrapMoney;
+
+        // 특수 블럭 기여분을 색상 버킷으로 분배. OffPalette/0 은 자투리에 합류.
+        float contribRed = 0f, contribBlue = 0f, contribGreen = 0f, contribScrap = 0f;
+        float contribRedMoney = 0f, contribBlueMoney = 0f, contribGreenMoney = 0f, contribScrapMoney = 0f;
+
+        for (int i = 0; i < pendingContributions.Count; i++)
+        {
+            SpecialPowerContribution c = pendingContributions[i];
+            switch (c.colorID)
+            {
+                case 1: contribRed += c.power; contribRedMoney += c.estimatedMoney; break;
+                case 2: contribBlue += c.power; contribBlueMoney += c.estimatedMoney; break;
+                case 3: contribGreen += c.power; contribGreenMoney += c.estimatedMoney; break;
+                default: contribScrap += c.power; contribScrapMoney += c.estimatedMoney; break;
+            }
+        }
+
+        data.redPower    = groupedRed    + contribRed;
+        data.bluePower   = groupedBlue   + contribBlue;
+        data.greenPower  = groupedGreen  + contribGreen;
+        data.scrapPower  = scrapBasePower + contribScrap;
+
+        data.redMoney    = groupedRedMoney    + contribRedMoney;
+        data.blueMoney   = groupedBlueMoney   + contribBlueMoney;
+        data.greenMoney  = groupedGreenMoney  + contribGreenMoney;
+        data.scrapMoney  = scrapBaseMoney     + contribScrapMoney;
+
+        return data;
+    }
+
+    /// <summary>
+    /// 애니메이션 종료 후 호출되는 정산 마감 단계.
+    /// 1) 비-PowerPlant 기여분(있다면) 을 Electricity 지갑에 선반영. PowerPlant 의 생산은 이미 totalPower 에 포함되어
+    ///    ResourceManager.ProcessNextDay 의 AddCurrency(Electricity, totalPower) 로 크레딧되므로 여기서 다시 더하지 않는다.
+    /// 2) powerText 의 "어제 생산량" 갱신 (totalPower + 비-PowerPlant 기여분).
+    /// 3) DailySettle 훅 (시각/타이머 등) 발화.
+    /// 4) ResourceManager 의 일일 처리 위임.
+    /// 5) 기여분 버퍼 정리.
+    /// </summary>
+    private void FinalizeDailySettlement()
+    {
+        float contribSum = 0f;
+        for (int i = 0; i < pendingContributions.Count; i++) contribSum += pendingContributions[i].power;
+        int contribCredit = Mathf.Max(0, Mathf.RoundToInt(contribSum));
+
+        if (contribCredit > 0 && ResourceManager.Instance != null)
+        {
+            ResourceManager.Instance.AddElectric(contribCredit);
+        }
+
+        CommitYesterdayProduction(totalPower + contribCredit);
+        EffectRuntime.Instance.NotifyDailySettle();
+        if (ResourceManager.Instance != null) ResourceManager.Instance.ProcessNextDay();
+
+        pendingContributions.Clear();
+    }
+
+    /// <summary>
+    /// 비-PowerPlant 효과가 자신의 일일 기여 전력을 PowerManager 에 제출하는 escape hatch.
+    /// PowerPlant 블럭은 솔로 그룹 경로(EstimateLivePower → groupPower)로 자동 집계되므로 이 API 를 쓸 필요가 없다.
+    /// 이 API 는 "Grouping 발전소에 추가 전력을 덧붙이는" 류의 향후 효과가 SettlementUI 색상 막대에 반영되고자 할 때 사용한다.
+    /// 색상은 owner.definition 의 colorBinding 으로부터 유추 (Single/MultiPrimary → 포함된 주색, OffPalette → 자투리).
+    /// 제출된 값은 SettlementUIController 해당 색 막대에 더해지고, AutoExchange 시 기본 환율로 돈으로 환산된다.
+    /// </summary>
+    public void SubmitSpecialContribution(SpecialBlockInstance owner, float power, string sourceTag = null)
+    {
+        if (owner == null || power <= 0f) return;
+
+        SpecialBlockDefinition def = owner.definition;
+        int colorID = ResolveContributionColorID(def);
+
+        float baseRatio = ResourceManager.Instance != null ? ResourceManager.Instance.ExchangeRatio : 10f;
+        if (baseRatio <= 0f) baseRatio = 1f;
+
+        pendingContributions.Add(new SpecialPowerContribution
+        {
+            owner = owner,
+            definition = def,
+            colorID = colorID,
+            power = power,
+            appliedExchangeRatio = baseRatio,
+            estimatedMoney = power / baseRatio,
+            sourceTag = sourceTag
+        });
+    }
+
+    private static int ResolveContributionColorID(SpecialBlockDefinition def)
+    {
+        if (def == null) return 0;
+        if (def.colorBinding == SpecialColorBinding.OffPalette) return 0;
+
+        // Single 은 ResolveSingleColorID 와 동일한 우선순위(Red > Blue > Yellow).
+        // MultiPrimary 는 표시용 대표색이 없으므로 같은 우선순위로 "첫 허용 주색" 을 선택한다.
+        if ((def.includedPrimaries & ColorSet.Red)    != 0) return 1;
+        if ((def.includedPrimaries & ColorSet.Blue)   != 0) return 2;
+        if ((def.includedPrimaries & ColorSet.Yellow) != 0) return 3;
+        return 0;
     }
 }

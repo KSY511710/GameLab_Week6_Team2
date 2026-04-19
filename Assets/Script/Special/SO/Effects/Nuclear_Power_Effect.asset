@@ -9,12 +9,12 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ce52ad432be1b474daf0e711148ec544, type: 3}
-  m_Name: Test_Effect
-  m_EditorClassIdentifier: Assembly-CSharp::Special.Effects.Assets.AddBaseProductionEffect
+  m_Script: {fileID: 11500000, guid: 58e072869905e534695e5a263ba3c541, type: 3}
+  m_Name: Nuclear_Power_Effect
+  m_EditorClassIdentifier: Assembly-CSharp::Special.Effects.Assets.ProduceFromEmptyCellsEffect
   scope: 0
   rangeInCells: 5
-  displayName: "\uD14C\uC2A4\uD2B8"
+  displayName: "\uC6D0\uC790\uB825 \uBC1C\uC804"
   description: 
   overlayColor: {r: 1, g: 0.85, b: 0.2, a: 0.32}
-  amountPerPlant: 100
+  perEmptyCell: 1

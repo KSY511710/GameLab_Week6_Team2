@@ -7714,6 +7714,7 @@ MonoBehaviour:
   drawTable: {fileID: 11400000, guid: 003789d43f5e6d54690cada3fe9e524d, type: 2}
   specialBlockPrefabs:
   - {fileID: 7094869109372859753, guid: 90ea464f70edae64ba538dd135afdac6, type: 3}
+  - {fileID: 7094869109372859753, guid: 8d4109ba3da2b4e4a8763bccc7b01a68, type: 3}
   verboseLog: 1
 --- !u!1 &1687137547
 GameObject:
