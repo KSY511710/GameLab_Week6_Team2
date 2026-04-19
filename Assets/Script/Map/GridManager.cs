@@ -819,14 +819,15 @@ public partial class GridManager : MonoBehaviour
 
     /// <summary>
     /// 특정 sourceRegion의 특정 방향 포트를 프리뷰한다.
-    /// 
+    ///
     /// 프리뷰는 "새로 열릴 targetRegion 1개"를 보여준다.
     /// 즉 예전처럼 전체 strip가 아니라,
     /// 실제 확장될 구역 하나만 보여준다.
-    /// 
+    ///
     /// 추가 수정 포인트:
     /// - 같은 targetRegion을 이미 프리뷰 중이면 다시 그리지 않는다.
     /// - hover 프리뷰 시 카메라 이동 여부는 옵션으로 분리한다.
+    /// - 돈이 부족해도 구조적으로 확장 가능한 땅이면 프리뷰는 보여준다.
     /// </summary>
     /// <param name="sourceRegion">기준 구역</param>
     /// <param name="direction">방향</param>
@@ -837,7 +838,12 @@ public partial class GridManager : MonoBehaviour
             return;
         }
 
-        if (!CanExpandFromRegion(sourceRegion, direction))
+        // 여기서 중요한 점:
+        // Hover 프리뷰는 "실제 구매 가능 여부"가 아니라
+        // "구조적으로 확장 가능한 타겟 구역이 존재하는지"를 기준으로 보여준다.
+        // 그래야 돈이 부족한 상태에서도 유저가 어떤 땅을 구매할 수 있는지
+        // 미리 확인할 수 있고, UI가 죽어 보이지 않는다.
+        if (!HasStructuralExpansionPort(sourceRegion, direction))
         {
             ClearExpansionPreview(moveCameraOnHoverPreview);
             return;
@@ -907,9 +913,6 @@ public partial class GridManager : MonoBehaviour
 
         RefreshTilesAroundRect(previewRect);
 
-        // 프리뷰는 유지하되, hover 중 카메라가 움직이면
-        // 포인터 판정과 버튼 재배치가 겹쳐 깜빡임이 생길 수 있으므로
-        // 기본값은 false 권장.
         if (moveCameraOnHoverPreview)
         {
             UpdatePreviewCameraTarget(previewRect, false);
