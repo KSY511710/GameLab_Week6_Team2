@@ -525,10 +525,10 @@ public class ResourceManager : MonoBehaviour
             dayText.text = $"Day {totalDay} · D-{currentDDay}";
 
         if (sessionGoalText != null)
-            sessionGoalText.text = $"Session {sessionIndex + 1}: {dailyProductionGoal} GWh/day";
+            sessionGoalText.text = $"Session {sessionIndex + 1}: \n {dailyProductionGoal} GWh/day";
 
         if (exchangeCapText != null)
-            exchangeCapText.text = $"Today Exchange: ${moneyExchangedToday} / ${dailyExchangeCap}";
+            exchangeCapText.text = $"Today Exchange: \n ${moneyExchangedToday} / ${dailyExchangeCap}";
 
         if (expandCostText != null)
             expandCostText.text = $"Expand: ${GetExpandCost()}";

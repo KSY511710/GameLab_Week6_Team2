@@ -17,14 +17,14 @@ MonoBehaviour:
   icon: {fileID: -760248212612917335, guid: e652722985d89634e9c773ddc7e7fda0, type: 3}
   shapeCoords:
   - {x: 0, y: 0}
-  allowRotation: 1
+  allowRotation: 0
   colorBinding: 2
   includedPrimaries: 0
   offPaletteColor: {r: 0, g: 0, b: 0, a: 1}
   uniqueShapeId: 1000
   role: 1
-  maxPerGame: 1
-  maxPerZone: 1
+  maxPerGame: 2
+  maxPerZone: 2
   effectAssets:
   - {fileID: 11400000, guid: 1041cd0a606f5dd46b7c5ca1cbd053cc, type: 2}
   customEffectPrefabs: []

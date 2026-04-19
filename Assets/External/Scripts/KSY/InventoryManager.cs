@@ -26,6 +26,23 @@ public class InventoryManager : MonoBehaviour
 
     public bool IsFull() { return currentBlockCount >= maxCapacity; }
 
+    /// <summary>
+    /// 블록 UI 프리팹 1개를 가방 패널에 생성하고 용량 1칸을 소비한다.
+    /// 모든 뽑기 경로(일반/특수/향후 추가)가 공통으로 사용하는 단일 진입점.
+    /// 가방이 꽉 찼거나 prefab 이 null 이면 아무 것도 하지 않고 null 을 돌려주어 호출자가 환불·취소를 결정한다.
+    /// InventoryManager 가 블록 타입을 알 필요가 없도록 GameObject 로만 다룬다.
+    /// </summary>
+    public GameObject TryAddBlock(GameObject prefab)
+    {
+        if (prefab == null) return null;
+        if (IsFull()) return null;
+
+        GameObject instance = Instantiate(prefab, inventoryPanel);
+        currentBlockCount++;
+        UpdateUI();
+        return instance;
+    }
+
     // 가챠에서 블록이 뽑혔을 때
     private void HandleBlockDrawn(KSM_GATCHA.CompanyColor drawnCompany, KSM_GATCHA.BlockSymbolType drawnSymbol, int drawnSize)
     {
@@ -52,10 +69,8 @@ public class InventoryManager : MonoBehaviour
             int randomIndex = Random.Range(0, candidates.Count);
             DraggableBlock targetPrefab = candidates[randomIndex];
 
-            // 뽑힌 프리팹을 가방에 생성합니다.
-            Instantiate(targetPrefab.gameObject, inventoryPanel);
-            currentBlockCount++;
-            UpdateUI();
+            // 공통 진입점을 통해 가방에 생성. 카운트·UI 갱신은 TryAddBlock 이 수행.
+            TryAddBlock(targetPrefab.gameObject);
         }
         else
         {

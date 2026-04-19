@@ -1,5 +1,4 @@
 using Special.Data;
-using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -7,9 +6,10 @@ using UnityEngine.UI;
 namespace Special.Integration
 {
     /// <summary>
-    /// 특수 블럭 전용 인벤토리 슬롯. SpecialGachaController.OnSpecialBlockDrawn 을 구독해
-    /// 본인의 definition.id 와 일치하면 개수 증가. 드래그&드롭으로 GridManager.PlaceShape 에
-    /// specialDef 를 전달한다.
+    /// 특수 블럭 인벤토리 UI. instance-per-draw 모델 — 뽑힐 때마다 SpecialGachaController 가
+    /// InventoryManager.TryAddBlock 경유로 이 프리팹을 가방 패널에 1개 인스턴스화한다.
+    /// 드래그&드롭으로 GridManager.PlaceShape 에 specialDef 를 전달하고, 배치 성공 시
+    /// InventoryManager 용량을 반납한 뒤 자신을 파괴한다.
     /// 일반 DraggableBlock 의 좁은 동작 계약(색/기호/크기 매칭)과 분리해 병렬로 돌린다.
     /// </summary>
     [RequireComponent(typeof(Image))]
@@ -24,10 +24,6 @@ namespace Special.Integration
         [Tooltip("Anchor 외 모든 칸에 소환될 자투리 프리팹. 모든 셀에 같은 룩이 필요하면 centerBlockPrefab 과 동일하게 지정.")]
         public GameObject sideBlockPrefab;
 
-        [Header("Inventory")]
-        public int blockCount = 0;
-        public TextMeshProUGUI countText;
-
         private Color validTint = new Color(0f, 1f, 0f, 0.5f);
         private Color invalidTint = new Color(1f, 0f, 0f, 0.5f);
 
@@ -41,46 +37,16 @@ namespace Special.Integration
         private Vector3Int lastCellPos;
         private bool isDragging;
 
-        private void OnEnable()
-        {
-            SpecialGachaController.OnSpecialBlockDrawn += HandleSpecialDrawn;
-        }
-
-        private void OnDisable()
-        {
-            SpecialGachaController.OnSpecialBlockDrawn -= HandleSpecialDrawn;
-        }
-
         private void Start()
         {
             img = GetComponent<Image>();
             mainCam = Camera.main;
             gridManager = Object.FindFirstObjectByType<GridManager>();
-            UpdateUI();
-        }
-
-        private void HandleSpecialDrawn(SpecialBlockDefinition def)
-        {
-            if (definition == null || def == null) return;
-            if (definition.id == def.id)
-            {
-                blockCount++;
-                UpdateUI();
-            }
-        }
-
-        private void UpdateUI()
-        {
-            if (countText != null) countText.text = $"x {blockCount}";
-            if (img == null) return;
-            Color c = img.color;
-            c.a = blockCount > 0 ? 1f : 0.5f;
-            img.color = c;
         }
 
         public void OnBeginDrag(PointerEventData eventData)
         {
-            if (blockCount <= 0 || definition == null || gridManager == null) return;
+            if (definition == null || gridManager == null) return;
             if (centerBlockPrefab == null) return;
             isDragging = true;
             startPos = transform.position;
@@ -139,10 +105,14 @@ namespace Special.Integration
                 // MultiPrimary 는 SpecialBlockResolver 가 그룹화 시점에 확정하므로 설치 시점은 0.
                 GameObject sideFallback = sideBlockPrefab != null ? sideBlockPrefab : centerBlockPrefab;
                 gridManager.PlaceShape(cellPos, definition.shapeCoords, colorID, definition.uniqueShapeId, centerBlockPrefab, sideFallback, definition);
-                blockCount--;
-                UpdateUI();
+
+                // 일반 DraggableBlock 과 동일하게 공통 가방 파이프라인으로 용량 반납 후 자신을 파괴.
+                if (InventoryManager.Instance != null) InventoryManager.Instance.OnBlockUsed();
+                Destroy(gameObject);
+                return;
             }
 
+            // 배치 실패: 원 위치로 복귀하고 이미지 복원.
             transform.position = startPos;
             img.enabled = true;
         }
