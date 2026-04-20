@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.UI; // 🌟 Image 컴포넌트를 조작하기 위해 필수!
 using Special.Integration;
 using Special.Data;
+using System.Collections.Generic;
 
 public class GachaDispenser : MonoBehaviour
 {
@@ -19,11 +20,21 @@ public class GachaDispenser : MonoBehaviour
     [Header("애니메이션 설정")]
     public float slideSpeed = 0.5f;   // 내려오는 시간
     public float waitTime = 1.5f;     // 다 내려오고 멈춰서 보여주는 시간
-
+    private GameObject currentDummy;
+    private List<GameObject> activeDummies = new List<GameObject>();
     private void OnEnable()
     {
         // 🌟 "뽑기 당첨!" 방송을 구독합니다.
         SpecialGachaController.OnSpecialBlockDrawn += PlayDispenseAnimation;
+        foreach (GameObject dummy in activeDummies)
+        {
+            if (dummy != null)
+            {
+                Destroy(dummy);
+            }
+        }
+        // 청소가 끝났으니 장부도 깨끗하게 비웁니다.
+        activeDummies.Clear();
     }
 
     private void OnDisable()
@@ -40,6 +51,7 @@ public class GachaDispenser : MonoBehaviour
     {
         // 🌟 1. 수엽님이 찾아내신 마법 주문! 껍데기를 마스크 안쪽(maskArea)에 소환합니다.
         GameObject dummyInstance = Instantiate(presentationPrefab, maskArea);
+        activeDummies.Add(dummyInstance);
         RectTransform itemRect = dummyInstance.GetComponent<RectTransform>();
 
         // 🌟 2. 가짜 껍데기에 '진짜 당첨된 아이템의 그림'을 덮어씌웁니다.
@@ -76,7 +88,11 @@ public class GachaDispenser : MonoBehaviour
         // 5. 플레이어가 "오! 나 이거 뽑았다!" 하고 볼 수 있게 잠깐 멈춰줍니다.
         yield return new WaitForSeconds(waitTime);
 
-        // 6. 연출이 끝났으니 가짜 껍데기는 파괴! (이미 진짜는 가방에 들어있음)
-        Destroy(dummyInstance);
+        if (dummyInstance != null)
+        {
+            // 🌟 4. 정상적으로 사라지므로 장부에서 이름을 지워주고 파괴합니다.
+            activeDummies.Remove(dummyInstance);
+            Destroy(dummyInstance);
+        }
     }
 }
