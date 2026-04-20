@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Special.Data.SpecialBlockDefinition
   id: ticket_office
   displayName: "\uB9E4\uD45C\uC18C"
-  icon: {fileID: 5797254098664026104, guid: 9c0b05a9ef227ed4ea5ea0056710643c, type: 3}
+  icon: {fileID: -8675338918307503609, guid: 2cefbecd84e1b9a4aba6070a4ddfc86c, type: 3}
   shapeCoords:
   - {x: 0, y: 0}
   allowRotation: 0
