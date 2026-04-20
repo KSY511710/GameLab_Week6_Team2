@@ -56,5 +56,5 @@
         "temp/": true,
         "Temp/": true
     },
-    "dotnet.defaultSolution": "GameLab_Week6_Team2.slnx"
+    "dotnet.defaultSolution": "GameLab_Week6_Team2.sln"
 }

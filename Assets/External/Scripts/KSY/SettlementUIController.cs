@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-// 📊 1. 정산 데이터 바구니
+// 📊 1. 정산 데이터 바구니 (반드시 파일 맨 위에 있어야 에러가 안 납니다!)
 public class SettlementData
 {
     public float redPower, bluePower, greenPower;
@@ -20,17 +20,17 @@ public class SettlementUIController : MonoBehaviour
     public static SettlementUIController Instance;
 
     [Header("🌟 1. 애니메이션 UI (프린터 컨테이너 & 배경)")]
-    public CanvasGroup dimPanel;
-    public GameObject settlementPanel;
-    public RectTransform printerRect;
-    public RectTransform paperRect;
+    public CanvasGroup dimPanel;           // 검은 반투명 배경
+    public GameObject settlementPanel;     // 정산 UI 전체 부모
+    public RectTransform printerRect;      // 프린터 컨테이너 (부품들을 묶은 투명 상자)
+    public RectTransform paperRect;        // 영수증 종이
 
     [Header("🌟 2. 애니메이션 좌표 & 속도")]
-    public Vector2 printerStartPos;
-    public Vector2 printerCenterPos;
-    public Vector2 printerExitPos;
-    public Vector2 paperHiddenPos;
-    public Vector2 paperPrintedPos;
+    public Vector2 printerStartPos;        // 대기 (오른쪽 밖)
+    public Vector2 printerCenterPos;       // 출력 (중앙)
+    public Vector2 printerExitPos;         // 퇴장 (왼쪽 밖)
+    public Vector2 paperHiddenPos;         // 종이 숨김 (프린터 안)
+    public Vector2 paperPrintedPos;        // 종이 나옴 (프린터 밖)
     public float moveSpeed = 0.5f;
 
     [Header("📊 3. 전력 막대그래프 (RectTransform - Width 조절)")]
@@ -38,24 +38,19 @@ public class SettlementUIController : MonoBehaviour
     public RectTransform bluePowerBar;
     public RectTransform greenPowerBar;
     public RectTransform scrapPowerBar;
-    public float maxGaugeWidth = 400f;
+    public float maxGaugeWidth = 400f;     // 🌟 게이지가 100%일 때의 최대 가로 길이
 
     [Header("📝 4. 텍스트 정보 (돈 게이지 삭제됨)")]
     public TextMeshProUGUI redText;
     public TextMeshProUGUI blueText;
     public TextMeshProUGUI greenText;
     public TextMeshProUGUI scrapText;
-    public TextMeshProUGUI moneyText;
+    public TextMeshProUGUI moneyText;      // 총 정산 금액 텍스트
 
     [Header("정산 속도")]
     public float fillSpeed = 1.5f;
 
-    [Header("정산 구간 간격")]
-    [Tooltip("한 기업 정산이 끝나고 다음 기업 정산이 시작되기 전 짧은 텀.")]
-    public float settlementStepGap = 0.12f;
-
     private float sharedMoneyTracker = 0f;
-    private Coroutine activeSettlementCoroutine;
 
     private void Awake()
     {
@@ -65,31 +60,11 @@ public class SettlementUIController : MonoBehaviour
         if (settlementPanel != null) settlementPanel.SetActive(false);
     }
 
-    private void OnDisable()
-    {
-        if (KSM_SoundManager.Instance != null)
-        {
-            KSM_SoundManager.Instance.StopMoneyExchangeSfx(0f);
-        }
-    }
-
     public void PlaySettlementAnimation(SettlementData data, Action onAnimationComplete)
     {
         if (settlementPanel == null) return;
-
-        if (activeSettlementCoroutine != null)
-        {
-            StopCoroutine(activeSettlementCoroutine);
-            activeSettlementCoroutine = null;
-        }
-
-        if (KSM_SoundManager.Instance != null)
-        {
-            KSM_SoundManager.Instance.StopMoneyExchangeSfx(0f);
-        }
-
         settlementPanel.SetActive(true);
-        activeSettlementCoroutine = StartCoroutine(AnimateSettlementSequence(data, onAnimationComplete));
+        StartCoroutine(AnimateSettlementSequence(data, onAnimationComplete));
     }
 
     private IEnumerator AnimateSettlementSequence(SettlementData data, Action onAnimationComplete)
@@ -105,14 +80,14 @@ public class SettlementUIController : MonoBehaviour
         SetBarWidth(greenPowerBar, data.greenPower / maxPower);
         SetBarWidth(scrapPowerBar, data.scrapPower / maxPower);
 
-        if (redText != null) redText.text = $"{data.redPower:F0} GWh";
-        if (blueText != null) blueText.text = $"{data.bluePower:F0} GWh";
-        if (greenText != null) greenText.text = $"{data.greenPower:F0} GWh";
-        if (scrapText != null) scrapText.text = $"{data.scrapPower:F0} GWh";
-        if (moneyText != null) moneyText.text = "총정산: $0";
+        redText.text = $"{data.redPower:F0} GWh";
+        blueText.text = $"{data.bluePower:F0} GWh";
+        greenText.text = $"{data.greenPower:F0} GWh";
+        scrapText.text = $"{data.scrapPower:F0} GWh";
+        moneyText.text = "총정산: $0";
 
-        if (printerRect != null) printerRect.anchoredPosition = printerStartPos;
-        if (paperRect != null) paperRect.anchoredPosition = paperHiddenPos;
+        printerRect.anchoredPosition = printerStartPos;
+        paperRect.anchoredPosition = paperHiddenPos;
 
         // ==========================================
         // 2단계: 등장 애니메이션 (배경 -> 프린터 -> 영수증)
@@ -124,22 +99,12 @@ public class SettlementUIController : MonoBehaviour
         yield return new WaitForSeconds(0.3f);
 
         // ==========================================
-        // 3단계: 기업별 정산 애니메이션
-        // 각 기업 시작 시 MoneyExchange 시작
-        // 각 기업이 0이 되면 MoneyExchange 즉시 정지
+        // 3단계: 정산 애니메이션 (Width 줄어들고 돈 올라감)
         // ==========================================
-        yield return StartCoroutine(DrainPowerAndFillMoneyWithSfx(redPowerBar, redText, data.redPower, data.redMoney));
-        yield return StartCoroutine(DrainPowerAndFillMoneyWithSfx(bluePowerBar, blueText, data.bluePower, data.blueMoney));
-        yield return StartCoroutine(DrainPowerAndFillMoneyWithSfx(greenPowerBar, greenText, data.greenPower, data.greenMoney));
-        yield return StartCoroutine(DrainPowerAndFillMoneyWithSfx(scrapPowerBar, scrapText, data.scrapPower, data.scrapMoney));
-
-        if (KSM_SoundManager.Instance != null)
-        {
-            KSM_SoundManager.Instance.StopMoneyExchangeSfx(0f);
-        }
-
-        // 여기 추가
-        PlayMoneyAllSfx(data);
+        yield return StartCoroutine(DrainPowerAndFillMoney(redPowerBar, redText, data.redPower, data.redMoney));
+        yield return StartCoroutine(DrainPowerAndFillMoney(bluePowerBar, blueText, data.bluePower, data.blueMoney));
+        yield return StartCoroutine(DrainPowerAndFillMoney(greenPowerBar, greenText, data.greenPower, data.greenMoney));
+        yield return StartCoroutine(DrainPowerAndFillMoney(scrapPowerBar, scrapText, data.scrapPower, data.scrapMoney));
 
         yield return new WaitForSeconds(2.0f);
 
@@ -150,36 +115,11 @@ public class SettlementUIController : MonoBehaviour
         yield return StartCoroutine(LerpPosition(printerRect, printerCenterPos, printerExitPos, moveSpeed));
         yield return StartCoroutine(LerpAlpha(dimPanel, 1f, 0f, 0.3f));
 
-        if (settlementPanel != null)
-        {
-            settlementPanel.SetActive(false);
-        }
-
-        activeSettlementCoroutine = null;
+        settlementPanel.SetActive(false);
         onAnimationComplete?.Invoke();
     }
 
-    private void PlayMoneyAllSfx(SettlementData data)
-    {
-        if (KSM_SoundManager.Instance == null)
-        {
-            return;
-        }
-
-        float totalMoney =
-            data.redMoney +
-            data.blueMoney +
-            data.greenMoney +
-            data.scrapMoney;
-
-        if (totalMoney <= 0f)
-        {
-            return;
-        }
-
-        KSM_SoundManager.Instance.PlayMoneyAll();
-    }
-
+    // 🌟 헬퍼 함수: 막대그래프 너비 설정
     private void SetBarWidth(RectTransform bar, float ratio)
     {
         if (bar != null)
@@ -188,129 +128,68 @@ public class SettlementUIController : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 기업 하나의 정산 구간을 처리한다.
-    /// 시작 시 MoneyExchange를 켜고,
-    /// 0이 되는 즉시 끈다.
-    /// </summary>
-    private IEnumerator DrainPowerAndFillMoneyWithSfx(
-        RectTransform powerBar,
-        TextMeshProUGUI powerText,
-        float startPower,
-        float earnedMoney)
+    // 🌟 핵심 로직: 전력 바 줄어들고 돈 텍스트 올라가는 애니메이션
+    private IEnumerator DrainPowerAndFillMoney(RectTransform powerBar, TextMeshProUGUI powerText, float startPower, float earnedMoney)
     {
-        if (startPower <= 0f || powerBar == null)
-        {
-            yield break;
-        }
+        if (startPower <= 0 || powerBar == null) yield break;
 
-        if (KSM_SoundManager.Instance != null)
-        {
-            KSM_SoundManager.Instance.StartMoneyExchangeSfx();
-        }
-
-        yield return StartCoroutine(DrainPowerAndFillMoney(powerBar, powerText, startPower, earnedMoney));
-
-        if (KSM_SoundManager.Instance != null)
-        {
-            KSM_SoundManager.Instance.StopMoneyExchangeSfx(0.05f);
-        }
-
-        if (settlementStepGap > 0f)
-        {
-            yield return new WaitForSeconds(settlementStepGap);
-        }
-    }
-
-    /// <summary>
-    /// 전력 바를 0까지 줄이고, 총 정산 금액을 올린다.
-    /// 
-    /// 주의:
-    /// - 여기서는 끝난 뒤 추가 대기하지 않는다.
-    /// - 소리가 0 되는 순간 바로 꺼져야 하므로, 대기는 바깥 코루틴에서 처리한다.
-    /// </summary>
-    private IEnumerator DrainPowerAndFillMoney(
-        RectTransform powerBar,
-        TextMeshProUGUI powerText,
-        float startPower,
-        float earnedMoney)
-    {
-        if (startPower <= 0f || powerBar == null)
-        {
-            yield break;
-        }
-
-        float t = 0f;
+        float t = 0;
         float startMoney = sharedMoneyTracker;
         float targetMoney = sharedMoneyTracker + earnedMoney;
-        float startWidth = powerBar.sizeDelta.x;
+        float startWidth = powerBar.sizeDelta.x; // 현재 너비 기억
 
         while (t < 1f)
         {
             t += Time.deltaTime * fillSpeed;
 
-            if (powerText != null)
-            {
-                powerText.text = $"{Mathf.Lerp(startPower, 0f, t):F0} GWh";
-            }
+            // 1. 전력 숫자 줄어듦
+            powerText.text = $"{Mathf.Lerp(startPower, 0f, t):F0} GWh";
 
+            // 2. 게이지 바 길이(Width) 줄어듦
             powerBar.sizeDelta = new Vector2(Mathf.Lerp(startWidth, 0f, t), powerBar.sizeDelta.y);
 
+            // 3. 돈 숫자 올라감 (N0로 천 단위 콤마 찍기)
             sharedMoneyTracker = Mathf.Lerp(startMoney, targetMoney, t);
-
-            if (moneyText != null)
-            {
-                moneyText.text = $"총정산: ${sharedMoneyTracker:N0}";
-            }
+            moneyText.text = $"총정산: ${sharedMoneyTracker:N0}";
 
             yield return null;
         }
 
+        // 최종 수치 고정
         powerBar.sizeDelta = new Vector2(0f, powerBar.sizeDelta.y);
-
-        if (powerText != null)
-        {
-            powerText.text = "0 GWh";
-        }
-
+        powerText.text = "0 GWh";
         sharedMoneyTracker = targetMoney;
+        moneyText.text = $"총정산: ${sharedMoneyTracker:N0}";
 
-        if (moneyText != null)
-        {
-            moneyText.text = $"총정산: ${sharedMoneyTracker:N0}";
-        }
+        yield return new WaitForSeconds(0.3f);
     }
 
+    // 🌟 헬퍼 함수: 부드러운 위치 이동
     private IEnumerator LerpPosition(RectTransform rect, Vector2 start, Vector2 end, float duration)
     {
         if (rect == null) yield break;
-
         float elapsed = 0f;
-
         while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
-            float t = Mathf.Sin(elapsed / duration * Mathf.PI * 0.5f);
+            float t = Mathf.Sin(elapsed / duration * Mathf.PI * 0.5f); // Ease-Out 효과
             rect.anchoredPosition = Vector2.Lerp(start, end, t);
             yield return null;
         }
-
         rect.anchoredPosition = end;
     }
 
+    // 🌟 헬퍼 함수: 부드러운 투명도 변경
     private IEnumerator LerpAlpha(CanvasGroup cg, float start, float end, float duration)
     {
         if (cg == null) yield break;
-
         float elapsed = 0f;
-
         while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
             cg.alpha = Mathf.Lerp(start, end, elapsed / duration);
             yield return null;
         }
-
         cg.alpha = end;
     }
 }
