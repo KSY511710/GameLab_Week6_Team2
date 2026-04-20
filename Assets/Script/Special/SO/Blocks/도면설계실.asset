@@ -10,20 +10,19 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7d01b16d7cebedb46a77a7b4d86a01ac, type: 3}
-  m_Name: "\uC6D0\uC790\uB825"
+  m_Name: "\uB3C4\uBA74\uC124\uACC4\uC2E4"
   m_EditorClassIdentifier: Assembly-CSharp::Special.Data.SpecialBlockDefinition
-  id: nuclear_power
-  displayName: "\uC6D0\uC790\uB825"
-  icon: {fileID: -760248212612917335, guid: e652722985d89634e9c773ddc7e7fda0, type: 3}
+  id: 
+  displayName: 
+  icon: {fileID: 0}
   shapeCoords:
   - {x: 0, y: 0}
   allowRotation: 0
-  colorBinding: 2
-  includedPrimaries: 0
+  colorBinding: 0
+  includedPrimaries: 1
   offPaletteColor: {r: 0, g: 0, b: 0, a: 1}
-  uniqueShapeId: 1001
-  role: 2
-  maxPerGame: 5
+  uniqueShapeId: 1000
+  role: 0
+  maxPerGame: 1
   maxPerZone: 1
-  effectAssets:
-  - {fileID: 11400000, guid: c9dafba25d517084085f32750f224201, type: 2}
+  effectAssets: []

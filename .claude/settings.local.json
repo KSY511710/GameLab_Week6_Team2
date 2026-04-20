@@ -8,7 +8,8 @@
       "Bash(git -C /c/Users/jungle/Documents/GitHub/GameLab_Week6_Team2 log --oneline --all)",
       "Bash(git -C /c/Users/jungle/Documents/GitHub/GameLab_Week6_Team2 show 9faba80 --stat)",
       "Bash(grep -i \"\\\\.cs$\")",
-      "Bash(xargs ls *)"
+      "Bash(xargs ls *)",
+      "Bash(grep -E \"pivot: \\\\{x: 0,\" Assets/TileMap/RedLine1.png.meta Assets/TileMap/RedLine2.png.meta Assets/TileMap/RedRound1.png.meta Assets/TileMap/RedRound2.png.meta Assets/TileMap/RedRound3.png.meta Assets/TileMap/RedRound4.png.meta)"
     ]
   }
 }

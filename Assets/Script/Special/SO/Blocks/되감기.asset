@@ -23,7 +23,7 @@ MonoBehaviour:
   offPaletteColor: {r: 0, g: 0, b: 0, a: 1}
   uniqueShapeId: 1007
   role: 1
-  maxPerGame: 1
+  maxPerGame: 3
   maxPerZone: 1
   effectAssets:
   - {fileID: 11400000, guid: b54ee528a5f921d4991169faad91ce4d, type: 2}
