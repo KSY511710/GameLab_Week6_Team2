@@ -98,6 +98,7 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
     /// </summary>
     private bool isDragging = false;
     public static bool IsAnyBlockDragging = false;
+    private bool isCancelled = false;
 
     /// <summary>
     /// 드래그 중 생성되는 프리뷰 고스트 오브젝트다.
@@ -195,9 +196,19 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
     /// </summary>
     private void Update()
     {
-        if (isDragging && Keyboard.current != null && Keyboard.current.qKey.wasPressedThisFrame)
+        if (isDragging)
         {
-            RotateShape();
+            // 기존 R/Q 회전 로직
+            if (Keyboard.current != null && Keyboard.current.qKey.wasPressedThisFrame)
+            {
+                RotateShape();
+            }
+
+            // 🌟 2. 마우스 우클릭 감지 시 강제 취소!
+            if (Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame)
+            {
+                CancelDrag();
+            }
         }
     }
 
@@ -237,6 +248,33 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
 
         PlayRotateSfx();
     }
+    private void CancelDrag()
+    {
+        isCancelled = true;         // 취소 모드 ON!
+        isDragging = false;
+        IsAnyBlockDragging = false; // 인벤토리 매니저에게도 드래그 끝났다고 알림
+
+        PlacementInteractionHub.BroadcastDragEnded();
+
+        // 고스트(프리뷰) 즉시 파괴
+        if (previewGhost != null)
+        {
+            Destroy(previewGhost);
+            previewGhost = null;
+            ghostRenderers = null;
+        }
+
+        // 블록 모양과 회전 원상 복구
+        ResetToOriginalState();
+
+        // 인벤토리에서 숨겨놨던 원본 아이콘 다시 켜기
+        if (img != null)
+        {
+            img.enabled = true;
+        }
+
+        Debug.Log("우클릭으로 블록 배치를 취소했습니다.");
+    }
 
     /// <summary>
     /// 드래그 시작 시 호출된다.
@@ -251,6 +289,7 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
     /// <param name="eventData">드래그 이벤트 데이터</param>
     public void OnBeginDrag(PointerEventData eventData)
     {
+        isCancelled = false;
         isDragging = true;
         IsAnyBlockDragging = true;
         if (img != null)
@@ -278,6 +317,7 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
     /// <param name="eventData">드래그 이벤트 데이터</param>
     public void OnDrag(PointerEventData eventData)
     {
+        if (isCancelled) return;
         if (previewGhost == null)
         {
             return;
@@ -337,6 +377,11 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
     /// <param name="eventData">드래그 이벤트 데이터</param>
     public void OnEndDrag(PointerEventData eventData)
     {
+        if (isCancelled)
+        {
+            isCancelled = false; // 다음 드래그를 위해 리셋
+            return;
+        }
         isDragging = false;
         IsAnyBlockDragging = false;
         PlacementInteractionHub.BroadcastDragEnded();
