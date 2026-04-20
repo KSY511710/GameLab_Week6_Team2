@@ -91,7 +91,7 @@ public class ResourceManager : MonoBehaviour
     public TextMeshProUGUI expandCostText;
 
     [Header("리롤 비용 설정")]
-    [SerializeField] private int baseRerollCost = 5;
+    [SerializeField] private int baseRerollCost;
     public TextMeshProUGUI RerollCostText;
     [Header("발전량 게이지 UI")]
     public Image powerGaugeFill;
@@ -197,6 +197,7 @@ public class ResourceManager : MonoBehaviour
         RaiseDayEvent();
         RaiseSkipAvailabilityIfChanged();
         OnDrawCostChanged?.Invoke();
+        GetRerollCost();
         UpdateRerollCost();
     }
 
@@ -519,7 +520,11 @@ public class ResourceManager : MonoBehaviour
         OnDrawCostChanged?.Invoke();
         return true;
     }
-    public int GetRerollCost() => baseRerollCost;
+    public int GetRerollCost() {
+        int DrawCost = GetBasicDrawCost();
+        baseRerollCost= DrawCost*3;
+        return baseRerollCost; 
+    }
 
     public bool TryPayForReroll()
     {
@@ -603,6 +608,6 @@ public class ResourceManager : MonoBehaviour
     }
     private void UpdateRerollCost()
     {
-        RerollCostText.text = $"Reroll:{baseRerollCost}";
+        RerollCostText.text = $"{baseRerollCost}";
     }
 }
