@@ -590,7 +590,6 @@ public class ResourceManager : MonoBehaviour
         int cost = GetRerollCost();
         if (!SpendMoney(cost)) return false;
 
-        UpdateRerollCost();
         return true;
     }
     // ==========================================================
@@ -619,6 +618,10 @@ public class ResourceManager : MonoBehaviour
 
         if (expandCostText != null)
             expandCostText.text = $"Expand: ${GetExpandCost()}";
+        if (RerollCostText != null)
+        {
+            RerollCostText.text = $"{GetRerollCost()}";
+        }
         if (powerGaugeFill != null && dailyProductionGoal > 0)
         {
             int livePower = PowerManager.Instance != null ? PowerManager.Instance.GetTotalPower() : 0;
