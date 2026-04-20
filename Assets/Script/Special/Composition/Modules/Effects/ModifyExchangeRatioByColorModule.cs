@@ -59,5 +59,35 @@ namespace Special.Composition.Modules.Effects
                 default: return includeScrap;
             }
         }
+
+        public override string BuildPreviewLine(SpecialBlockInstance owner, ConditionResult condition)
+        {
+            if (!condition.passed) return "환전 비율 <color=#888888>효과 미발동</color>";
+            float scalar = Mathf.Max(0f, condition.scalar);
+            float m = useScalarAsExponent ? Mathf.Pow(multiplier, scalar) : multiplier;
+            float off = offset * scalar;
+            string colorLabel = FormatTargetColors();
+            string body;
+            if (!Mathf.Approximately(m, 1f) && !Mathf.Approximately(off, 0f))
+                body = $"×{m:0.##}, {(off >= 0 ? "+" : "")}{off:0.##}";
+            else if (!Mathf.Approximately(m, 1f))
+                body = $"×{m:0.##}";
+            else if (!Mathf.Approximately(off, 0f))
+                body = $"{(off >= 0 ? "+" : "")}{off:0.##}";
+            else
+                body = "변화 없음";
+            return $"환전 비율({colorLabel}) <color=#66D9FF>{body}</color>";
+        }
+
+        private string FormatTargetColors()
+        {
+            if (targetColors == ColorSet.All) return "전체";
+            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            if ((targetColors & ColorSet.Red) != 0) sb.Append("빨강");
+            if ((targetColors & ColorSet.Blue) != 0) { if (sb.Length > 0) sb.Append('/'); sb.Append("파랑"); }
+            if ((targetColors & ColorSet.Yellow) != 0) { if (sb.Length > 0) sb.Append('/'); sb.Append("노랑"); }
+            if (includeScrap) { if (sb.Length > 0) sb.Append('/'); sb.Append("무색"); }
+            return sb.Length == 0 ? "없음" : sb.ToString();
+        }
     }
 }

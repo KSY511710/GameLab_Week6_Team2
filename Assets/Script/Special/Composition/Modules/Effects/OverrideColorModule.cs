@@ -77,5 +77,26 @@ namespace Special.Composition.Modules.Effects
 
             co.TargetCells = targets;
         }
+
+        public override string BuildPreviewLine(SpecialBlockInstance owner, ConditionResult condition)
+        {
+            if (!condition.passed) return "색상 변경 <color=#888888>효과 미발동</color>";
+            string colorLabel = overrideColorId switch
+            {
+                1 => "빨강",
+                2 => "파랑",
+                3 => "노랑",
+                _ => "없음"
+            };
+            string selectionLabel = selection switch
+            {
+                TargetSelection.Adjacent => "인접",
+                TargetSelection.InScope => "범위 내",
+                TargetSelection.ConditionTargets => "조건 타겟",
+                TargetSelection.OwnFootprint => "자신",
+                _ => selection.ToString()
+            };
+            return $"{selectionLabel} 블럭 → <color=#FF99CC>{colorLabel}</color> 으로 변경";
+        }
     }
 }

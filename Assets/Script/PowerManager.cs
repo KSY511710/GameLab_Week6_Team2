@@ -75,6 +75,12 @@ public class GroupInfo
     /// BFS 가 만든 "실제 그룹" 과 라이브 파워 갱신/정산 규칙을 구분하기 위한 플래그.
     /// </summary>
     public bool isPowerPlantSolo;
+
+    /// <summary>
+    /// 가장 최근 전력 계산 과정 기록. 정보 패널/시퀀서가 실제 수치 기반 텍스트를 만들 때 소스로 사용.
+    /// CreateNewGroup 최초 생성 시, 이후 RecalculateAllGroupPowers 호출마다 갱신된다.
+    /// </summary>
+    public Special.Runtime.CalculationTrace lastTrace;
 }
 
 /// <summary>
@@ -407,6 +413,7 @@ public class PowerManager : MonoBehaviour
         float colorMultiplier = 1f + (maxColorCount - restColorCount) * 0.2f;
 
         // 효과 훅: PowerCalculationContext 에 누적 후 최종식에 반영. 효과가 없으면 기존 공식과 동일.
+        CalculationTrace trace = new CalculationTrace();
         PowerCalculationContext ctx = new PowerCalculationContext
         {
             BaseProductionRaw = baseProduction,
@@ -414,8 +421,10 @@ public class PowerManager : MonoBehaviour
             BaseCompletionRaw = 2,
             ShapeCompletionRaw = shapeBonus,
             ColorMultiplierRaw = colorMultiplier,
-            ClusterPositions = cluster
+            ClusterPositions = cluster,
+            Trace = trace
         };
+        SeedTraceRawValues(ctx);
         EffectRuntime.Instance.ApplyPowerHooks(ctx);
 
         float finalPower = ctx.Compute();
@@ -467,7 +476,8 @@ public class PowerManager : MonoBehaviour
             colorMultiplier = colorMultiplier,
             dominantRealColor = dominantRealColor,
             members = currentGroupVisuals,
-            clusterPositions = new List<Vector2Int>(cluster)
+            clusterPositions = new List<Vector2Int>(cluster),
+            lastTrace = trace
         };
 
         string debugMsg = $"<color=#00FFFF><b>[전력 정산 영수증 - 그룹 {nextGroupID}]</b></color>\n" +
@@ -588,6 +598,7 @@ public class PowerManager : MonoBehaviour
                 continue;
             }
 
+            CalculationTrace refreshed = new CalculationTrace();
             PowerCalculationContext ctx = new PowerCalculationContext
             {
                 BaseProductionRaw = g.baseProduction,
@@ -595,15 +606,32 @@ public class PowerManager : MonoBehaviour
                 BaseCompletionRaw = 2,
                 ShapeCompletionRaw = g.formationMultiplier,
                 ColorMultiplierRaw = g.colorMultiplier,
-                ClusterPositions = g.clusterPositions
+                ClusterPositions = g.clusterPositions,
+                Trace = refreshed
             };
+            SeedTraceRawValues(ctx);
             EffectRuntime.Instance.ApplyPowerHooks(ctx);
 
             g.groupPower = ctx.Compute();
             float ratio = ResolveExchangeRatio(g, baseRatio);
             g.appliedExchangeRatio = ratio;
             g.estimatedMoneyGen = g.groupPower / ratio;
+            g.lastTrace = refreshed;
         }
+    }
+
+    /// <summary>
+    /// 효과와 무관한 공통 raw 단계를 Trace 에 순서대로 push. 효과 훅이 찍는 +/× 단계보다 반드시 먼저 기록되어야
+    /// 정보 패널/시퀀서가 "raw → 효과 누적 → 최종" 순으로 자연스럽게 읽어올 수 있다.
+    /// </summary>
+    private static void SeedTraceRawValues(PowerCalculationContext ctx)
+    {
+        if (ctx.Trace == null) return;
+        ctx.Trace.RecordRaw(CalcStage.Base, "기본 생산량(칸)", ctx.BaseProductionRaw);
+        ctx.Trace.RecordRaw(CalcStage.UniqueParts, "부품 종류", ctx.UniquePartsRaw);
+        ctx.Trace.RecordRaw(CalcStage.BaseCompletion, "기본 완성도", ctx.BaseCompletionRaw);
+        ctx.Trace.RecordRaw(CalcStage.ShapeCompletion, "모양 완성도", ctx.ShapeCompletionRaw);
+        ctx.Trace.RecordRaw(CalcStage.ColorMultiplier, "색상 순도 배율", ctx.ColorMultiplierRaw);
     }
 
     /// <summary>

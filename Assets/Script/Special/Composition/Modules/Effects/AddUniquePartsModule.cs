@@ -18,8 +18,18 @@ namespace Special.Composition.Modules.Effects
         {
             if (ctx is PowerCalculationContext power)
             {
-                power.UniquePartsAdd += Mathf.RoundToInt(condition.scalar) * perScalar;
+                int add = Mathf.RoundToInt(condition.scalar) * perScalar;
+                float before = power.UniquePartsRaw + power.UniquePartsAdd;
+                power.UniquePartsAdd += add;
+                power.Trace?.RecordAdd(CalcStage.UniqueParts, "부품 종류", SourceName(owner), before, add);
             }
+        }
+
+        public override string BuildPreviewLine(SpecialBlockInstance owner, ConditionResult condition)
+        {
+            if (!condition.passed) return "부품 종류 <color=#888888>효과 미발동</color>";
+            int add = Mathf.RoundToInt(condition.scalar) * perScalar;
+            return $"부품 종류 <color=#FFE066>+{add}</color>";
         }
     }
 }

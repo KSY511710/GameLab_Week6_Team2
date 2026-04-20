@@ -35,5 +35,12 @@ namespace Special.Composition.Modules.Effects
         /// </summary>
         public override float EstimateLivePower(SpecialBlockInstance owner, ConditionResult condition)
             => condition.scalar * powerPerScalar;
+
+        public override string BuildPreviewLine(SpecialBlockInstance owner, ConditionResult condition)
+        {
+            if (!condition.passed) return "일일 기여 <color=#888888>효과 미발동</color>";
+            float power = condition.scalar * powerPerScalar;
+            return $"일일 기여 <color=#FFE066>+{power:0.##} GWh</color>";
+        }
     }
 }

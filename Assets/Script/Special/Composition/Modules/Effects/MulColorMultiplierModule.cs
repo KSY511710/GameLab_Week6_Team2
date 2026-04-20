@@ -20,8 +20,17 @@ namespace Special.Composition.Modules.Effects
             if (ctx is PowerCalculationContext power)
             {
                 float m = useScalarAsExponent ? Mathf.Pow(multiplier, condition.scalar) : multiplier;
+                float before = power.ColorMultiplierMul;
                 power.ColorMultiplierMul *= m;
+                power.Trace?.RecordMul(CalcStage.ColorMultiplier, "색상 순도 배율", SourceName(owner), before, m);
             }
+        }
+
+        public override string BuildPreviewLine(SpecialBlockInstance owner, ConditionResult condition)
+        {
+            if (!condition.passed) return "색상 순도 배율 <color=#888888>효과 미발동</color>";
+            float m = useScalarAsExponent ? Mathf.Pow(multiplier, condition.scalar) : multiplier;
+            return $"색상 순도 배율 <color=#FF99CC>×{m:0.##}</color>";
         }
     }
 }

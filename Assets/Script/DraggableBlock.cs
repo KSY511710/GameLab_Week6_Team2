@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using Prediction;
+using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
@@ -129,6 +130,7 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
         {
             lastCellPos = cellPos;
             UpdateGhostValidity(cellPos);
+            PlacementInteractionHub.BroadcastDragMoved(cellPos, shapeCoords, null, (int)companyColor, (int)symbolType);
         }
     }
 
@@ -145,6 +147,7 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
     public void OnEndDrag(PointerEventData eventData)
     {
         isDragging = false;
+        PlacementInteractionHub.BroadcastDragEnded();
 
         if (previewGhost != null)
         {

@@ -35,5 +35,16 @@ namespace Special.Composition.Modules.Effects
                 }
             }
         }
+
+        public override string BuildPreviewLine(SpecialBlockInstance owner, ConditionResult condition)
+        {
+            if (!condition.passed) return "스킵 티켓 <color=#888888>효과 미발동</color>";
+            if (mode == ModifyMode.Add)
+            {
+                int add = Mathf.RoundToInt(condition.scalar) * perScalar;
+                return $"스킵 티켓 <color=#FFE066>+{add}/일</color>";
+            }
+            return $"스킵 티켓 <color=#66D9FF>×{multiplier:0.##}</color>";
+        }
     }
 }

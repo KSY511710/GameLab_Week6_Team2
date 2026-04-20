@@ -21,8 +21,26 @@ namespace Special.Composition
 
         public abstract ConditionResult Evaluate(SpecialBlockInstance owner, EffectScope scope, int range);
 
+        /// <summary>
+        /// 시퀀서/정보 패널이 조건 한 줄을 표시할 때 호출. 기본 포맷은 "<이름> (✓/✗, scalar=…)".
+        /// </summary>
+        public virtual string BuildPreviewLine(SpecialBlockInstance owner, ConditionResult result)
+        {
+            string label = string.IsNullOrEmpty(name) ? GetType().Name : name;
+            if (!result.passed) return $"{label} <color=#FF6666>✗</color>";
+            // scalar 가 1 이면 단순 통과, 아니면 계수로 덧붙여 표시.
+            if (Mathf.Approximately(result.scalar, 1f)) return $"{label} <color=#66DD99>✓</color>";
+            return $"{label} <color=#66DD99>✓</color> <color=#AADDFF>(×{FormatScalar(result.scalar)})</color>";
+        }
+
         /// <summary>multiplier / divisor 적용. divisor==0 은 0 으로 안전 처리.</summary>
         protected float ApplyCoefficient(float raw)
             => divisor == 0f ? 0f : raw * multiplier / divisor;
+
+        private static string FormatScalar(float v)
+        {
+            if (v == (int)v) return ((int)v).ToString();
+            return v.ToString("0.##");
+        }
     }
 }

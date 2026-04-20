@@ -38,6 +38,13 @@ namespace Special.Runtime
 
         public IReadOnlyList<Vector2Int> ClusterPositions;
 
+        /// <summary>
+        /// null 이 아니면 Compute() 호출 시 최종 단계의 결과 요약을 기록한다.
+        /// 효과 모듈들은 Apply 내에서 RecordAdd/RecordMul 을 직접 호출해 자신의 기여를 남긴다.
+        /// 라이브 재계산 경로(CalculateTotalPower)는 null 로 두어 기존 동작과 동일하게 유지한다.
+        /// </summary>
+        public CalculationTrace Trace;
+
         public float Compute()
         {
             int baseAll = BaseProductionRaw + BaseProductionAdd;
@@ -46,7 +53,9 @@ namespace Special.Runtime
             int shapeC = Mathf.Max(0, Mathf.RoundToInt((ShapeCompletionRaw + ShapeCompletionAdd) * ShapeCompletionMul));
             int completion = baseC + shapeC;
             float color = ColorMultiplierRaw * ColorMultiplierMul;
-            return (baseAll + partsAll) * completion * color * FinalMultiplier;
+            float final = (baseAll + partsAll) * completion * color * FinalMultiplier;
+            if (Trace != null) Trace.RecordFinal("최종 발전량", final);
+            return final;
         }
 
         /// <summary>GroupInfo.completionMultiplier / debugMsg 용 합산 캐시값.</summary>

@@ -23,5 +23,12 @@ namespace Special.Composition.Modules.Effects
                 pc.ExtraRepeatCount += Mathf.RoundToInt(condition.scalar) * perScalar;
             }
         }
+
+        public override string BuildPreviewLine(SpecialBlockInstance owner, ConditionResult condition)
+        {
+            if (!condition.passed) return "생산 횟수 <color=#888888>효과 미발동</color>";
+            int add = Mathf.RoundToInt(condition.scalar) * perScalar;
+            return $"생산 횟수 <color=#FFD35A>+{add}</color>";
+        }
     }
 }

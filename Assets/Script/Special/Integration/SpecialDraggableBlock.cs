@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Prediction;
 using Special.Data;
 using Special.Effects;
 using Special.Runtime;
@@ -100,6 +101,9 @@ namespace Special.Integration
                     lastPreviewAnchorArray = anchorArr;
                     RefreshScopePreview(anchorArr);
                 }
+
+                int predictColorID = definition.colorBinding == SpecialColorBinding.Single ? definition.ResolveSingleColorID() : 0;
+                PlacementInteractionHub.BroadcastDragMoved(cellPos, definition.shapeCoords, definition, predictColorID, definition.uniqueShapeId);
             }
         }
 
@@ -166,6 +170,7 @@ namespace Special.Integration
         {
             if (!isDragging) return;
             isDragging = false;
+            PlacementInteractionHub.BroadcastDragEnded();
 
             if (dragOverlay != null)
             {
@@ -204,6 +209,11 @@ namespace Special.Integration
 
         private void OnDisable()
         {
+            if (isDragging)
+            {
+                isDragging = false;
+                PlacementInteractionHub.BroadcastDragEnded();
+            }
             if (dragOverlay != null)
             {
                 dragOverlay.Hide();
