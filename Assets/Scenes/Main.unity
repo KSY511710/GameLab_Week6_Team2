@@ -9483,6 +9483,13 @@ MonoBehaviour:
   drawTable: {fileID: 11400000, guid: 003789d43f5e6d54690cada3fe9e524d, type: 2}
   specialBlockPrefabs:
   - {fileID: 7094869109372859753, guid: 90ea464f70edae64ba538dd135afdac6, type: 3}
+  - {fileID: 7094869109372859753, guid: 8d4109ba3da2b4e4a8763bccc7b01a68, type: 3}
+  - {fileID: 7094869109372859753, guid: 916eed51597a85f46bcc979e863961d3, type: 3}
+  - {fileID: 7094869109372859753, guid: 8bb0c012cd75fd84c852dd7592bb835d, type: 3}
+  - {fileID: 7094869109372859753, guid: 73b4888c455de8645a86c5e27ac53563, type: 3}
+  - {fileID: 7094869109372859753, guid: b5f5adf07509c4b49b6bfbebd9b3ad9b, type: 3}
+  - {fileID: 7094869109372859753, guid: 4e98886091b88614486c98fcc96d3c3f, type: 3}
+  - {fileID: 7094869109372859753, guid: 3ad15225493f92847bf8eb89bfa0739f, type: 3}
   verboseLog: 1
 --- !u!1 &1687137547
 GameObject:
@@ -12430,10 +12437,20 @@ MonoBehaviour:
   dayEndPerEntryDelay: 0.3
   dayEndFlashDuration: 0.2
   dayEndPostTotalDelay: 1.5
+  specialStepSeconds: 0.7
+  specialFlashDuration: 0.4
+  specialPostFinalDelay: 0.6
+  specialOverlayHoldExtra: 0.4
+  specialSpotlightSettleDelay: 0.1
+  waitBetweenPlacements: 0.1
   panelRoot: {fileID: 286917277}
   calcStepText: {fileID: 722346238}
   highlightColor: {r: 1, g: 1, b: 0.4, a: 1}
   ungroupedHighlightColor: {r: 0.7, g: 0.7, b: 0.7, a: 1}
+  overlayCellSprite: {fileID: 0}
+  overlaySortingOrder: 50
+  footprintFlashColor: {r: 1, g: 0.95, b: 0.4, a: 1}
+  affectedFlashColor: {r: 0.6, g: 1, b: 0.9, a: 1}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
