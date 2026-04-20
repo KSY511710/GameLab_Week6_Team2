@@ -6,8 +6,10 @@ using UnityEngine.SceneManagement;
 ///
 /// 역할:
 /// 1. ESC 키 입력으로 ESC 패널을 열고 닫는다.
-/// 2. Back 버튼 클릭 시 ESC 패널을 닫는다.
-/// 3. Exit 버튼 클릭 시 타이틀 씬으로 이동하거나 게임을 종료한다.
+/// 2. 이어하기 버튼 클릭 시 ESC 패널을 닫는다.
+/// 3. 다시시작 버튼 클릭 시 현재 씬을 다시 로드한다.
+/// 4. 메인메뉴 버튼 클릭 시 타이틀 씬으로 이동한다.
+/// 5. 게임종료 버튼 클릭 시 게임을 종료한다.
 /// 4. 게임 정지(Time.timeScale 변경)는 하지 않는다.
 /// 5. MainPanel 같은 다른 UI는 건드리지 않고, ESC 패널만 켜고 끈다.
 ///
@@ -15,8 +17,7 @@ using UnityEngine.SceneManagement;
 /// 1. 이 스크립트를 빈 오브젝트(예: KSM_ESCMenuManager)에 부착한다.
 /// 2. escPanelRoot 에 ESC 패널 오브젝트를 연결한다.
 /// 3. ESC 패널은 시작 시 꺼져 있어도 되고, 켜져 있어도 Start에서 자동으로 꺼진다.
-/// 4. Back 버튼 OnClick에 OnClickBack 연결
-/// 5. Exit 버튼 OnClick에 OnClickExit 연결
+/// 4. 버튼 OnClick에 OnClickContinue / OnClickRestart / OnClickMainMenu / OnClickQuitGame 을 연결한다.
 /// </summary>
 public class KSM_ESCMenuManager : MonoBehaviour
 {
@@ -28,12 +29,9 @@ public class KSM_ESCMenuManager : MonoBehaviour
     [Tooltip("ESC 키로 패널을 열고 닫을지 여부.")]
     [SerializeField] private bool allowEscapeToggle = true;
 
-    [Header("Exit Settings")]
-    [Tooltip("true면 Exit 버튼 클릭 시 타이틀 씬으로 이동한다. false면 게임 종료.")]
-    [SerializeField] private bool exitToTitleScene = true;
-
-    [Tooltip("Exit 버튼 클릭 시 이동할 타이틀 씬 이름.")]
-    [SerializeField] private string titleSceneName = "TitleScene";
+    [Header("Scene Settings")]
+    [Tooltip("메인메뉴 버튼 클릭 시 이동할 타이틀 씬 이름.")]
+    [SerializeField] private string titleSceneName = "Title";
 
     /// <summary>
     /// 현재 ESC 패널이 열려 있는지 여부를 저장한다.
@@ -92,38 +90,73 @@ public class KSM_ESCMenuManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Back 버튼 클릭 시 호출된다.
+    /// 이어하기 버튼 클릭 시 호출된다.
     /// ESC 패널만 닫는다.
     /// </summary>
-    public void OnClickBack()
+    public void OnClickContinue()
     {
         SetEscPanelOpen(false);
     }
 
     /// <summary>
-    /// Exit 버튼 클릭 시 호출된다.
-    /// 설정에 따라 타이틀 씬으로 이동하거나 게임을 종료한다.
+    /// 다시시작 버튼 클릭 시 호출된다.
+    /// 현재 씬을 다시 로드한다.
+    /// </summary>
+    public void OnClickRestart()
+    {
+        Scene currentScene = SceneManager.GetActiveScene();
+
+        if (!currentScene.IsValid())
+        {
+            Debug.LogWarning("[KSM_ESCMenuManager] 현재 씬 정보를 가져오지 못했습니다.");
+            return;
+        }
+
+        SceneManager.LoadScene(currentScene.name);
+    }
+
+    /// <summary>
+    /// 메인메뉴 버튼 클릭 시 호출된다.
+    /// 지정한 타이틀 씬으로 이동한다.
+    /// </summary>
+    public void OnClickMainMenu()
+    {
+        if (string.IsNullOrWhiteSpace(titleSceneName))
+        {
+            Debug.LogWarning("[KSM_ESCMenuManager] titleSceneName 이 비어 있습니다. 인스펙터에서 확인하세요.");
+            return;
+        }
+
+        SceneManager.LoadScene(titleSceneName);
+    }
+
+    /// <summary>
+    /// 게임종료 버튼 클릭 시 호출된다.
+    /// 에디터에서는 플레이를 종료하고, 빌드에서는 애플리케이션을 종료한다.
+    /// </summary>
+    public void OnClickQuitGame()
+    {
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#else
+        Application.Quit();
+#endif
+    }
+
+    /// <summary>
+    /// 기존 Back 버튼 연결과의 호환을 위해 유지한다.
+    /// </summary>
+    public void OnClickBack()
+    {
+        OnClickContinue();
+    }
+
+    /// <summary>
+    /// 기존 Exit 버튼 연결과의 호환을 위해 유지한다.
     /// </summary>
     public void OnClickExit()
     {
-        if (exitToTitleScene)
-        {
-            if (string.IsNullOrWhiteSpace(titleSceneName))
-            {
-                Debug.LogWarning("[KSM_ESCMenuManager] titleSceneName 이 비어 있습니다. 인스펙터에서 확인하세요.");
-                return;
-            }
-
-            SceneManager.LoadScene(titleSceneName);
-        }
-        else
-        {
-#if UNITY_EDITOR
-            UnityEditor.EditorApplication.isPlaying = false;
-#else
-            Application.Quit();
-#endif
-        }
+        OnClickQuitGame();
     }
 
     /// <summary>
