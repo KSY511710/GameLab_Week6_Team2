@@ -15,7 +15,7 @@ MonoBehaviour:
   scope: 2
   rangeInCells: 3
   displayName: "\uCC28\uB2E8\uAE30[Blue]"
-  description: 
+  description: "Gwh : $ \uD658\uC804 \uD6A8\uC728 x2"
   overlayColor: {r: 1, g: 0.85, b: 0.2, a: 0.32}
   conditions:
   - {fileID: 11400000, guid: e7ade2cc852d52e40b693bd55c1a2e7b, type: 2}
