@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Special.Effects
 {
-    public abstract class EffectAsset : ScriptableObject, IEffect
+    public abstract class EffectAsset : ScriptableObject
     {
         [SerializeField] protected EffectScope scope = EffectScope.Global;
         [Tooltip("Range scope 에서만 사용. 자기 footprint 에서 뻗는 맨해튼 거리.")]

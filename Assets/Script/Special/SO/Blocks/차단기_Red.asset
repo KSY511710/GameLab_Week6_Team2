@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7d01b16d7cebedb46a77a7b4d86a01ac, type: 3}
+  m_Name: "\uCC28\uB2E8\uAE30_Red"
+  m_EditorClassIdentifier: Assembly-CSharp::Special.Data.SpecialBlockDefinition
+  id: power_breaker_red
+  displayName: "\uCC28\uB2E8\uAE30[Red]"
+  icon: {fileID: 0}
+  shapeCoords:
+  - {x: 0, y: 0}
+  allowRotation: 0
+  colorBinding: 0
+  includedPrimaries: 1
+  offPaletteColor: {r: 0, g: 0, b: 0, a: 1}
+  uniqueShapeId: 1004
+  role: 0
+  maxPerGame: 2
+  maxPerZone: 2
+  effectAssets:
+  - {fileID: 11400000, guid: 4fb2aead174446e4099e8c8ba95fb65d, type: 2}

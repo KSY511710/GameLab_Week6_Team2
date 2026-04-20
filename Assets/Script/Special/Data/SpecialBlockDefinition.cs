@@ -60,11 +60,9 @@ namespace Special.Data
         [Min(1)] public int maxPerGame = 1;
         [Min(1)] public int maxPerZone = 1;
 
-        [Header("Effects (Hybrid)")]
-        [Tooltip("재사용 가능한 SO 효과들. 파라미터만 다르면 여기서 에셋 인스턴스로 조합한다.")]
+        [Header("Effects")]
+        [Tooltip("재사용 가능한 SO 효과들. 일반적으로 CompositeEffectAsset 인스턴스를 조립해 슬롯에 채운다.")]
         public EffectAsset[] effectAssets;
-        [Tooltip("특수 블럭 전용 MonoBehaviour 효과 프리팹. 인스턴스별 상태가 필요한 경우 사용.")]
-        public GameObject[] customEffectPrefabs;
 
         /// <summary>Single 바인딩에서 사용할 단일 색상 ID(1=Red, 2=Blue, 3=Yellow, 0=off).</summary>
         public int ResolveSingleColorID()

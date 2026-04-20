@@ -17,10 +17,11 @@ namespace Special.Runtime
         public readonly IReadOnlyList<Vector2Int> footprint;
         public int zoneId;
         public int groupId;   // 0 = 미그룹
+        public int placementDay; // SpecialBlockRegistry.RegisterPlacement 에서 ResourceManager.TotalDay 로 세팅. 드래그 프리뷰는 0.
 
-        private readonly List<IEffect> effectInstances = new();
+        private readonly List<EffectAsset> effectInstances = new();
 
-        public IReadOnlyList<IEffect> EffectInstances => effectInstances;
+        public IReadOnlyList<EffectAsset> EffectInstances => effectInstances;
 
         public SpecialBlockInstance(int instanceId, SpecialBlockDefinition def, Vector2Int anchor, IReadOnlyList<Vector2Int> footprint, int zoneId)
         {
@@ -31,7 +32,7 @@ namespace Special.Runtime
             this.zoneId = zoneId;
         }
 
-        public void AddEffect(IEffect effect) => effectInstances.Add(effect);
+        public void AddEffect(EffectAsset effect) => effectInstances.Add(effect);
         public void ClearEffects() => effectInstances.Clear();
 
         public bool FootprintContains(Vector2Int cell)

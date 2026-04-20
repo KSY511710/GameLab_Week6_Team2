@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 513eca9af875ad149a1149b69650c818, type: 3}
+  m_Name: "\uBAA8\uB2C8\uD130\uC2E4_Composite"
+  m_EditorClassIdentifier: Assembly-CSharp::Special.Composition.CompositeEffectAsset
+  scope: 1
+  rangeInCells: 3
+  displayName: "\uBAA8\uB2C8\uD130\uC2E4"
+  description: "\uC77C\uC77C \uC0DD\uC0B0\uB7C9 +500 Gwh (1\uD68C\uC6A9)"
+  overlayColor: {r: 1, g: 0.85, b: 0.2, a: 0.32}
+  conditions:
+  - {fileID: 11400000, guid: 400175bcbb7681941af10e902ca6104f, type: 2}
+  - {fileID: 11400000, guid: 1b4e753754218b04698bff1117dfe82f, type: 2}
+  effects:
+  - {fileID: 11400000, guid: 8ecc0e0437e15cc4f852fe0162c73d54, type: 2}

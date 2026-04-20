@@ -14,6 +14,7 @@ namespace Special.Composition
         OnSkipSettle,         // 스킵 정산 시 (티켓 보너스 등)
         OnBlockPlacedColor,   // 블럭 설치 직후 색 오버라이드
         OnProductionCount,    // 정산 시 발전소별 생산 반복 횟수 결정
-        OnTicketProduction    // 일일 티켓 생산 (ProcessNextDay 시점)
+        OnTicketProduction,   // 일일 티켓 생산 (ProcessNextDay 시점)
+        OnExchangeRatio       // 그룹별 환전 비율 결정 (RecalculateAllGroupPowers 시점)
     }
 }

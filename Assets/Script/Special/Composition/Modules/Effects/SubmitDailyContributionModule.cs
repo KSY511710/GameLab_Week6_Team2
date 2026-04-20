@@ -7,6 +7,8 @@ namespace Special.Composition.Modules.Effects
     /// OnProductionSettle 훅(일일 정산 직전) 에서 PowerManager.SubmitSpecialContribution 호출.
     /// 비-PowerPlant 블럭이 "내가 오늘 이만큼 생산했다" 를 SettlementUI 의 색상 막대에 반영시키기 위한 효과.
     /// 기여 전력 = condition.scalar * powerPerScalar.
+    /// 라이브 파워 표시는 PowerManager.CalculateTotalPower 가 비-PowerPlant 인스턴스의
+    /// CompositeEffectAsset.EstimateLiveContributionPower(OnProductionSettle 모듈 한정) 를 합산해 반영.
     /// </summary>
     [CreateAssetMenu(menuName = "Special/Effects/Submit Daily Contribution")]
     public class SubmitDailyContributionModule : EffectModule
@@ -28,7 +30,8 @@ namespace Special.Composition.Modules.Effects
         }
 
         /// <summary>
-        /// PowerPlant role 라이브 파워에도 동일 값 반영 — 일일 기여분을 실시간 UI 에도 표시.
+        /// PowerPlant 솔로 그룹 경로(CompositeEffectAsset.EstimateLivePower) 와
+        /// 비-PowerPlant 라이브 합산 경로(CompositeEffectAsset.EstimateLiveContributionPower) 양쪽에 동일 값을 돌려준다.
         /// </summary>
         public override float EstimateLivePower(SpecialBlockInstance owner, ConditionResult condition)
             => condition.scalar * powerPerScalar;

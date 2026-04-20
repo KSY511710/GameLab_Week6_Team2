@@ -114,7 +114,6 @@ namespace Special.Integration
         /// <summary>
         /// 앵커 셀 기준 효과 범위를 누적해 오버레이에 반영. 같은 tile 안에서 마우스 미세 이동 시
         /// OnDrag 상위에서 anchorArr 동일로 조기 탈출 — 여긴 셀 경계 교차 시만 호출된다.
-        /// customEffectPrefabs 는 MonoBehaviour 로 설치 시에만 인스턴스화되므로 드래그 중엔 미리보기 불가 — 의도적.
         /// </summary>
         private void RefreshScopePreview(Vector2Int anchorArr)
         {

@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7d01b16d7cebedb46a77a7b4d86a01ac, type: 3}
+  m_Name: "\uC99D\uD3ED\uAE30"
+  m_EditorClassIdentifier: Assembly-CSharp::Special.Data.SpecialBlockDefinition
+  id: amplifier
+  displayName: "\uC99D\uD3ED\uAE30"
+  icon: {fileID: -760248212612917335, guid: e652722985d89634e9c773ddc7e7fda0, type: 3}
+  shapeCoords:
+  - {x: 0, y: 0}
+  allowRotation: 0
+  colorBinding: 2
+  includedPrimaries: 0
+  offPaletteColor: {r: 0, g: 0, b: 0, a: 1}
+  uniqueShapeId: 1000
+  role: 1
+  maxPerGame: 5
+  maxPerZone: 5
+  effectAssets:
+  - {fileID: 11400000, guid: e0b35c2c0eeb35c4188919f80fb50199, type: 2}

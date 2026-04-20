@@ -7,7 +7,7 @@ using UnityEngine;
 namespace Special.Runtime
 {
     /// <summary>
-    /// 모든 IEffect 인스턴스가 훅을 구독/해제하는 중앙 디스패처.
+    /// 모든 EffectAsset 인스턴스가 훅을 구독/해제하는 중앙 디스패처.
     /// 효과는 Activate 시 Hook* 을 호출해 콜백을 등록하고, Deactivate 시 자동 해제된다.
     /// 이 클래스는 MonoBehaviour 가 아니라 프로세스 단일 인스턴스이며, 씬 독립적으로 살아남는다.
     /// </summary>
@@ -30,6 +30,7 @@ namespace Special.Runtime
         private readonly List<Hook<Action<SkipSettleContext>>> skipHooks = new();
         private readonly List<Hook<Action<ColorOverrideContext>>> colorOverrideHooks = new();
         private readonly List<Hook<Action<ProductionCountContext>>> productionCountHooks = new();
+        private readonly List<Hook<Action<ExchangeRatioContext>>> exchangeRatioHooks = new();
 
         // ============ Registration ============
 
@@ -69,6 +70,10 @@ namespace Special.Runtime
         public void HookProductionCount(SpecialBlockInstance owner, Action<ProductionCountContext> cb)
             => productionCountHooks.Add(new Hook<Action<ProductionCountContext>> { Owner = owner, Callback = cb });
 
+        /// <summary>그룹별 환전 비율 수정. PowerManager.RecalculateAllGroupPowers 가 그룹마다 1회 발화.</summary>
+        public void HookExchangeRatio(SpecialBlockInstance owner, Action<ExchangeRatioContext> cb)
+            => exchangeRatioHooks.Add(new Hook<Action<ExchangeRatioContext>> { Owner = owner, Callback = cb });
+
         /// <summary>Deactivate 시 호출. owner 의 모든 훅을 일괄 제거.</summary>
         public void UnhookAll(SpecialBlockInstance owner)
         {
@@ -81,6 +86,7 @@ namespace Special.Runtime
             skipHooks.RemoveAll(h => h.Owner == owner);
             colorOverrideHooks.RemoveAll(h => h.Owner == owner);
             productionCountHooks.RemoveAll(h => h.Owner == owner);
+            exchangeRatioHooks.RemoveAll(h => h.Owner == owner);
         }
 
         // ============ Dispatch (called by PowerManager / ResourceManager) ============
@@ -166,6 +172,15 @@ namespace Special.Runtime
             for (int i = 0; i < productionCountHooks.Count; i++)
             {
                 try { productionCountHooks[i].Callback?.Invoke(ctx); }
+                catch (Exception e) { Debug.LogException(e); }
+            }
+        }
+
+        public void ApplyExchangeRatioHooks(ExchangeRatioContext ctx)
+        {
+            for (int i = 0; i < exchangeRatioHooks.Count; i++)
+            {
+                try { exchangeRatioHooks[i].Callback?.Invoke(ctx); }
                 catch (Exception e) { Debug.LogException(e); }
             }
         }

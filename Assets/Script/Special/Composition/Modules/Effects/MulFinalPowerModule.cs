@@ -5,7 +5,6 @@ namespace Special.Composition.Modules.Effects
 {
     /// <summary>
     /// 기획 효과 l) PowerCalculationContext.FinalMultiplier 에 multiplier 곱셈.
-    /// 레거시 BoostExchangeRatioByColorEffect 의 출력 배율 적용 부분 대응.
     /// 조건 게이트(passed)는 CompositeEffectAsset 이 이미 통과시킨 상태에서만 호출됨.
     /// </summary>
     [CreateAssetMenu(menuName = "Special/Effects/Mul Final Power")]

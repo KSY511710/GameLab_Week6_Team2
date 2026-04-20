@@ -3,6 +3,8 @@ using TMPro;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Special.Composition;
+using Special.Composition.Contexts;
 using Special.Data;
 using Special.Effects;
 using Special.Integration;
@@ -301,12 +303,32 @@ public class PowerManager : MonoBehaviour
     {
         if (inst == null) return 0f;
         float sum = 0f;
-        IReadOnlyList<IEffect> effects = inst.EffectInstances;
+        IReadOnlyList<EffectAsset> effects = inst.EffectInstances;
         for (int i = 0; i < effects.Count; i++)
         {
-            if (effects[i] is EffectAsset asset)
+            EffectAsset asset = effects[i];
+            if (asset == null) continue;
+            try { sum += asset.EstimateLivePower(inst); }
+            catch (Exception e) { Debug.LogException(e); }
+        }
+        return sum;
+    }
+
+    /// <summary>
+    /// 비-PowerPlant(Grouping/Independent) 블럭의 라이브 파워 기여분.
+    /// CompositeEffectAsset 의 OnProductionSettle 모듈만 합산하므로 OnPowerCalculation 을 통해
+    /// 그룹 groupPower 에 이미 반영된 값과는 이중 집계되지 않는다.
+    /// </summary>
+    private static float EstimateNonPowerPlantLiveContributionOf(SpecialBlockInstance inst)
+    {
+        if (inst == null) return 0f;
+        float sum = 0f;
+        IReadOnlyList<EffectAsset> effects = inst.EffectInstances;
+        for (int i = 0; i < effects.Count; i++)
+        {
+            if (effects[i] is CompositeEffectAsset composite)
             {
-                try { sum += asset.EstimateLivePower(inst); }
+                try { sum += composite.EstimateLiveContributionPower(inst); }
                 catch (Exception e) { Debug.LogException(e); }
             }
         }
@@ -478,7 +500,7 @@ public class PowerManager : MonoBehaviour
     {
         // 훅은 CreateNewGroup 시점에만 fire 하고, 이후 새로 들어온 특수 블럭은
         // 기존 그룹의 groupPower 를 자동으로 갱신하지 못한다. 합산 전에 훅을 재반영해
-        // AddBaseProductionEffect 같은 "존재하는 발전소를 건드리는" 효과가 실제 값에 반영되게 한다.
+        // AddBaseProductionModule 같은 "존재하는 발전소를 건드리는" 효과가 실제 값에 반영되게 한다.
         RecalculateAllGroupPowers();
 
         float calculatedTotalPower = 0;
@@ -508,8 +530,26 @@ public class PowerManager : MonoBehaviour
         }
         LastUngroupedCount = ungroupedBlocks;
 
+        // 비-PowerPlant 특수 블럭(Grouping/Independent)의 OnProductionSettle 기여분을 라이브 파워에 합산.
+        // - PowerPlant role 은 솔로 그룹 경로에서 이미 EstimateLivePower 가 groupPower 로 반영됨.
+        // - OnPowerCalculation 모듈은 PowerCalculationContext 경로로 groupPower 에 녹아들어 있으므로
+        //   EstimateLiveContributionPower 가 OnProductionSettle 만 합산해 이중 집계를 막는다.
+        float nonPowerPlantLiveContrib = 0f;
+        SpecialBlockRegistry registry = SpecialBlockRegistry.Instance;
+        if (registry != null)
+        {
+            IReadOnlyList<SpecialBlockInstance> installed = registry.Installed;
+            for (int i = 0; i < installed.Count; i++)
+            {
+                SpecialBlockInstance inst = installed[i];
+                if (inst == null || inst.definition == null) continue;
+                if (inst.definition.role == SpecialBlockRole.PowerPlant) continue;
+                nonPowerPlantLiveContrib += EstimateNonPowerPlantLiveContributionOf(inst);
+            }
+        }
+
         int previous = totalPower;
-        totalPower = (int)(calculatedTotalPower + ungroupedBlocks);
+        totalPower = (int)(calculatedTotalPower + ungroupedBlocks + nonPowerPlantLiveContrib);
 
         // 라이브 총합은 더 이상 powerText에 즉시 출력하지 않는다 (Feature 1).
         // 변동이 있을 때만 외부 구독자(예: ResourceManager)에게 알림.
@@ -541,8 +581,9 @@ public class PowerManager : MonoBehaviour
             {
                 SpecialBlockInstance owner = FindPowerPlantOwner(g);
                 g.groupPower = owner != null ? EstimateLivePowerOf(owner) : 0f;
-                g.appliedExchangeRatio = baseRatio;
-                g.estimatedMoneyGen = g.groupPower / baseRatio;
+                float soloRatio = ResolveExchangeRatio(g, baseRatio);
+                g.appliedExchangeRatio = soloRatio;
+                g.estimatedMoneyGen = g.groupPower / soloRatio;
                 continue;
             }
 
@@ -558,9 +599,25 @@ public class PowerManager : MonoBehaviour
             EffectRuntime.Instance.ApplyPowerHooks(ctx);
 
             g.groupPower = ctx.Compute();
-            g.appliedExchangeRatio = baseRatio;
-            g.estimatedMoneyGen = g.groupPower / baseRatio;
+            float ratio = ResolveExchangeRatio(g, baseRatio);
+            g.appliedExchangeRatio = ratio;
+            g.estimatedMoneyGen = g.groupPower / ratio;
         }
+    }
+
+    /// <summary>
+    /// 그룹 환전 비율 훅을 발화해 최종 ratio 를 돌려준다. 효과가 없으면 baseRatio 그대로.
+    /// 합성식 Compute() 가 하한 0.01 클램프를 이미 보장하지만, 호출부에서 /ratio 를 쓰므로 추가 방어 하지 않음.
+    /// </summary>
+    private static float ResolveExchangeRatio(GroupInfo group, float baseRatio)
+    {
+        ExchangeRatioContext exCtx = new ExchangeRatioContext
+        {
+            Group = group,
+            BaseRatio = baseRatio
+        };
+        EffectRuntime.Instance.ApplyExchangeRatioHooks(exCtx);
+        return exCtx.Compute();
     }
 
     /// <summary>PowerPlant 솔로 그룹에 대응되는 SpecialBlockInstance 역조회.</summary>
@@ -743,25 +800,16 @@ public class PowerManager : MonoBehaviour
 
     /// <summary>
     /// 애니메이션 종료 후 호출되는 정산 마감 단계.
-    /// 1) 비-PowerPlant 기여분(있다면) 을 Electricity 지갑에 선반영. PowerPlant 의 생산은 이미 totalPower 에 포함되어
-    ///    ResourceManager.ProcessNextDay 의 AddCurrency(Electricity, totalPower) 로 크레딧되므로 여기서 다시 더하지 않는다.
-    /// 2) powerText 의 "어제 생산량" 갱신 (totalPower + 비-PowerPlant 기여분).
-    /// 3) DailySettle 훅 (시각/타이머 등) 발화.
-    /// 4) ResourceManager 의 일일 처리 위임.
-    /// 5) 기여분 버퍼 정리.
+    /// 1) powerText 의 "어제 생산량" 갱신. 비-PowerPlant 기여분은 이미 CalculateTotalPower 에서
+    ///    totalPower 에 합산되어 있으므로 여기서 별도로 더하지 않는다.
+    /// 2) DailySettle 훅 (시각/타이머 등) 발화.
+    /// 3) ResourceManager 의 일일 처리 위임 (AddCurrency(Electricity, totalPower) 로 지갑 반영).
+    /// 4) 기여분 버퍼 정리. pendingContributions 는 SettlementData 색상 막대 표시 용도로만 유지되므로
+    ///    지갑/yesterday 크레딧에는 다시 반영하지 않는다(이중 집계 방지).
     /// </summary>
     private void FinalizeDailySettlement()
     {
-        float contribSum = 0f;
-        for (int i = 0; i < pendingContributions.Count; i++) contribSum += pendingContributions[i].power;
-        int contribCredit = Mathf.Max(0, Mathf.RoundToInt(contribSum));
-
-        if (contribCredit > 0 && ResourceManager.Instance != null)
-        {
-            ResourceManager.Instance.AddElectric(contribCredit);
-        }
-
-        CommitYesterdayProduction(totalPower + contribCredit);
+        CommitYesterdayProduction(totalPower);
         EffectRuntime.Instance.NotifyDailySettle();
         if (ResourceManager.Instance != null) ResourceManager.Instance.ProcessNextDay();
 

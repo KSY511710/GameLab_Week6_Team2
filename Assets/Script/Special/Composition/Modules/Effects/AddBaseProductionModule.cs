@@ -5,7 +5,6 @@ namespace Special.Composition.Modules.Effects
 {
     /// <summary>
     /// 기획 효과 a) PowerCalculationContext.BaseProductionAdd 에 (condition.scalar * perScalar) 가산.
-    /// 레거시 AddBaseProductionEffect 동등 재현 (perScalar = amountPerPlant).
     /// </summary>
     [CreateAssetMenu(menuName = "Special/Effects/Add Base Production")]
     public class AddBaseProductionModule : EffectModule

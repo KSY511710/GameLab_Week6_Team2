@@ -66,6 +66,27 @@ namespace Special.Composition
             return total;
         }
 
+        /// <summary>
+        /// 비-PowerPlant(Grouping/Independent) 블럭이 라이브 파워에 더할 기여분.
+        /// OnProductionSettle 단계 모듈만 합산한다 — OnPowerCalculation 모듈은 이미
+        /// PowerCalculationContext 경로로 각 그룹의 groupPower 에 반영되므로 이중 집계되지 않도록 배제.
+        /// </summary>
+        public float EstimateLiveContributionPower(SpecialBlockInstance owner)
+        {
+            if (effects == null) return 0f;
+            ConditionResult cond = EvaluateAllConditions(owner);
+            if (!cond.passed) return 0f;
+            float total = 0f;
+            for (int i = 0; i < effects.Count; i++)
+            {
+                EffectModule m = effects[i];
+                if (m == null) continue;
+                if (m.Phase != EffectTriggerPhase.OnProductionSettle) continue;
+                total += m.EstimateLivePower(owner, cond);
+            }
+            return total;
+        }
+
         // =========================================================
         // Phase → EffectRuntime 훅 등록
         // =========================================================
@@ -117,6 +138,14 @@ namespace Special.Composition
 
                 case EffectTriggerPhase.OnProductionCount:
                     runtime.HookProductionCount(owner, ctx =>
+                    {
+                        if (!ScopeEvaluator.GroupMatches(owner, scope, rangeInCells, ctx.Group)) return;
+                        Dispatch(owner, phaseEffects, ctx);
+                    });
+                    break;
+
+                case EffectTriggerPhase.OnExchangeRatio:
+                    runtime.HookExchangeRatio(owner, ctx =>
                     {
                         if (!ScopeEvaluator.GroupMatches(owner, scope, rangeInCells, ctx.Group)) return;
                         Dispatch(owner, phaseEffects, ctx);

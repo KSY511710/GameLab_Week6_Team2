@@ -6,7 +6,6 @@ namespace Special.Composition.Modules.Conditions
 {
     /// <summary>
     /// scope/range 내 빈칸 셀 개수를 scalar 로 출력. owner 자기 footprint 는 자동 제외.
-    /// 레거시 ProduceFromEmptyCellsEffect 의 빈칸 카운트 대응.
     /// </summary>
     [CreateAssetMenu(menuName = "Special/Conditions/Count Empty Cells")]
     public class CountEmptyCellsCondition : ConditionModule

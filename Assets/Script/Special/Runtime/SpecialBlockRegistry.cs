@@ -62,6 +62,7 @@ namespace Special.Runtime
         public SpecialBlockInstance RegisterPlacement(SpecialBlockDefinition def, Vector2Int anchor, IReadOnlyList<Vector2Int> footprint, int zoneId)
         {
             SpecialBlockInstance instance = new SpecialBlockInstance(nextInstanceId++, def, anchor, footprint, zoneId);
+            instance.placementDay = ResourceManager.Instance != null ? ResourceManager.Instance.TotalDay : 0;
             installed.Add(instance);
             installCountByDefId[def.id] = installCountByDefId.TryGetValue(def.id, out int c) ? c + 1 : 1;
             var zoneKey = (def.id, zoneId);
@@ -106,22 +107,6 @@ namespace Special.Runtime
                     if (asset == null) continue;
                     owner.AddEffect(asset);
                     asset.Activate(owner, runtime);
-                }
-            }
-
-            if (def.customEffectPrefabs != null)
-            {
-                foreach (var prefab in def.customEffectPrefabs)
-                {
-                    if (prefab == null) continue;
-                    GameObject go = Instantiate(prefab, transform);
-                    go.name = $"{def.id}#{owner.instanceId}_CustomFx";
-                    CustomEffectBehaviour[] behaviours = go.GetComponents<CustomEffectBehaviour>();
-                    foreach (var b in behaviours)
-                    {
-                        owner.AddEffect(b);
-                        b.Activate(owner, runtime);
-                    }
                 }
             }
         }
