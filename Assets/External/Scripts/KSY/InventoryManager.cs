@@ -109,9 +109,42 @@ public class InventoryManager : MonoBehaviour
     {
         if (prefab == null) return null;
         if (IsFull()) return null;
-        GameObject instance = Instantiate(prefab, inventoryPanel);
+
+        Transform targetEmptySlot = null;
+
+        for (int i = 0; i < inventoryPanel.childCount; i++)
+        {
+            Transform slot = inventoryPanel.GetChild(i);
+
+            if (slot.childCount == 0)
+            {
+                targetEmptySlot = slot;
+                break;
+            }
+        }
+
+        Transform parentTransform = (targetEmptySlot != null) ? targetEmptySlot : inventoryPanel;
+
+        // 1. 아이템을 생성합니다.
+        GameObject instance = Instantiate(prefab, parentTransform);
+
+        // 2. RectTransform을 가져와서 모든 수치를 '강제 초기화' 합니다.
+        RectTransform rect = instance.GetComponent<RectTransform>();
+        if (rect != null)
+        {
+            // 🌟 [핵심] Width와 Height를 100으로 고정합니다.
+            rect.sizeDelta = new Vector2(100f, 100f);
+
+            // 좌표를 회색 원 정중앙(0,0,0)으로 맞춥니다.
+            rect.localPosition = Vector3.zero;
+
+            // 유니티가 제멋대로 줄인 Scale을 1배율로 복구합니다.
+            rect.localScale = Vector3.one;
+        }
+
         currentBlockCount++;
         UpdateUI();
+
         return instance;
     }
 
@@ -121,7 +154,7 @@ public class InventoryManager : MonoBehaviour
     {
         if (capacityText != null)
         {
-            capacityText.text = $"보유 블록: {currentBlockCount} / {maxCapacity}";
+            capacityText.text = $"{currentBlockCount}";
             capacityText.color = IsFull() ? Color.red : Color.white;
         }
     }
