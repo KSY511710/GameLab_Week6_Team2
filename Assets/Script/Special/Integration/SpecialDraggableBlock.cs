@@ -6,6 +6,7 @@ using Special.Runtime;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using UnityEngine.InputSystem;
 
 namespace Special.Integration
 {
@@ -54,6 +55,7 @@ namespace Special.Integration
         private readonly List<Vector2Int> dragScopeScratch = new List<Vector2Int>();
         private readonly HashSet<Vector2Int> dragScopeSeen = new HashSet<Vector2Int>();
         private Vector2Int lastPreviewAnchorArray = new Vector2Int(int.MinValue, int.MinValue);
+        private bool isCancelled = false;
 
         private void Start()
         {
@@ -61,11 +63,48 @@ namespace Special.Integration
             mainCam = Camera.main;
             gridManager = Object.FindFirstObjectByType<GridManager>();
         }
+        private void Update()
+        {
+            if (isDragging && Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame)
+            {
+                CancelDrag();
+            }
+        }
+        private void CancelDrag()
+        {
+            isCancelled = true;
+            isDragging = false;
+            PlacementInteractionHub.BroadcastDragEnded();
 
+            // 효과 범위 오버레이 끄기
+            if (dragOverlay != null)
+            {
+                dragOverlay.Hide();
+                dragOverlay = null;
+            }
+
+            // 고스트(프리뷰) 파괴
+            if (previewGhost != null)
+            {
+                Destroy(previewGhost);
+                previewGhost = null;
+                ghostRenderers = null;
+            }
+
+            // 원위치로 돌려놓고 아이콘 다시 켜기
+            transform.position = startPos;
+            if (img != null)
+            {
+                img.enabled = true;
+            }
+
+            Debug.Log("특수 블럭 배치를 우클릭으로 취소했습니다.");
+        }
         public void OnBeginDrag(PointerEventData eventData)
         {
             if (definition == null || gridManager == null) return;
             if (centerBlockPrefab == null) return;
+            isCancelled = false;
             isDragging = true;
             startPos = transform.position;
             img.enabled = false;
@@ -83,7 +122,7 @@ namespace Special.Integration
 
         public void OnDrag(PointerEventData eventData)
         {
-            if (!isDragging || previewGhost == null) return;
+            if (isCancelled || !isDragging || previewGhost == null) return;
 
             Vector3 mouseWorld = mainCam.ScreenToWorldPoint(Input.mousePosition);
             mouseWorld.z = 0f;
@@ -168,6 +207,11 @@ namespace Special.Integration
 
         public void OnEndDrag(PointerEventData eventData)
         {
+            if (isCancelled)
+            {
+                isCancelled = false;
+                return;
+            }
             if (!isDragging) return;
             isDragging = false;
             PlacementInteractionHub.BroadcastDragEnded();
