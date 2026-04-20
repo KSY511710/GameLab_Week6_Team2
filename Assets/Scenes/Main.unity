@@ -691,6 +691,7 @@ MonoBehaviour:
   scrapText: {fileID: 635885539}
   moneyText: {fileID: 1780349803}
   fillSpeed: 1.5
+  settlementStepGap: 0.12
 --- !u!4 &99708515
 Transform:
   m_ObjectHideFlags: 0
@@ -1180,6 +1181,18 @@ MonoBehaviour:
       - m_Target: {fileID: 1682614367}
         m_TargetAssemblyTypeName: GachaConnector, Assembly-CSharp
         m_MethodName: OnClickCompanyDrawFromDropdown
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+      - m_Target: {fileID: 5540493155211487559, guid: 1c1616d18e1961c42b8df8d1817cfdca, type: 3}
+        m_TargetAssemblyTypeName: KSM_SoundManager, Assembly-CSharp
+        m_MethodName: PlayUiClick
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -2127,6 +2140,18 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+      - m_Target: {fileID: 5540493155211487559, guid: 1c1616d18e1961c42b8df8d1817cfdca, type: 3}
+        m_TargetAssemblyTypeName: KSM_SoundManager, Assembly-CSharp
+        m_MethodName: PlayUiClick
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &300594713
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2389,6 +2414,18 @@ MonoBehaviour:
       - m_Target: {fileID: 1682614367}
         m_TargetAssemblyTypeName: GachaConnector, Assembly-CSharp
         m_MethodName: OnClickGeneralDraw
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+      - m_Target: {fileID: 5540493155211487559, guid: 1c1616d18e1961c42b8df8d1817cfdca, type: 3}
+        m_TargetAssemblyTypeName: KSM_SoundManager, Assembly-CSharp
+        m_MethodName: PlayUiClick
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -2686,6 +2723,18 @@ MonoBehaviour:
       - m_Target: {fileID: 2145336448}
         m_TargetAssemblyTypeName: PowerManager, Assembly-CSharp
         m_MethodName: ProceedToNextDay
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+      - m_Target: {fileID: 5540493155211487559, guid: 1c1616d18e1961c42b8df8d1817cfdca, type: 3}
+        m_TargetAssemblyTypeName: KSM_SoundManager, Assembly-CSharp
+        m_MethodName: PlayUiClick
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -3975,6 +4024,18 @@ MonoBehaviour:
         m_TargetAssemblyTypeName: GachaConnector, Assembly-CSharp
         m_MethodName: OnOffShop
         m_Mode: 6
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+      - m_Target: {fileID: 5540493155211487559, guid: 1c1616d18e1961c42b8df8d1817cfdca, type: 3}
+        m_TargetAssemblyTypeName: KSM_SoundManager, Assembly-CSharp
+        m_MethodName: PlayUiClick
+        m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
@@ -6383,6 +6444,18 @@ MonoBehaviour:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
           m_IntArgument: 1
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+      - m_Target: {fileID: 5540493155211487559, guid: 1c1616d18e1961c42b8df8d1817cfdca, type: 3}
+        m_TargetAssemblyTypeName: KSM_SoundManager, Assembly-CSharp
+        m_MethodName: PlayUiClick
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
           m_FloatArgument: 0
           m_StringArgument: 
           m_BoolArgument: 0
@@ -9138,6 +9211,18 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+      - m_Target: {fileID: 5540493155211487559, guid: 1c1616d18e1961c42b8df8d1817cfdca, type: 3}
+        m_TargetAssemblyTypeName: KSM_SoundManager, Assembly-CSharp
+        m_MethodName: PlayUiClick
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &1394480066
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10509,9 +10594,9 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: GridManager, Assembly-CSharp
-        m_MethodName: TryExpandBoard
+      - m_Target: {fileID: 5540493155211487559, guid: 1c1616d18e1961c42b8df8d1817cfdca, type: 3}
+        m_TargetAssemblyTypeName: KSM_SoundManager, Assembly-CSharp
+        m_MethodName: PlayUiClick
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -10645,6 +10730,18 @@ MonoBehaviour:
       - m_Target: {fileID: 1089462228}
         m_TargetAssemblyTypeName: KSM_ESCMenuManager, Assembly-CSharp
         m_MethodName: OnClickBack
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+      - m_Target: {fileID: 5540493155211487559, guid: 1c1616d18e1961c42b8df8d1817cfdca, type: 3}
+        m_TargetAssemblyTypeName: KSM_SoundManager, Assembly-CSharp
+        m_MethodName: PlayUiClick
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -11402,7 +11499,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1805331885}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 5540493155211487559, guid: 1c1616d18e1961c42b8df8d1817cfdca, type: 3}
+        m_TargetAssemblyTypeName: KSM_SoundManager, Assembly-CSharp
+        m_MethodName: PlayUiClick
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &1805331885
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -12573,6 +12682,18 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 1
         m_CallState: 2
+      - m_Target: {fileID: 5540493155211487559, guid: 1c1616d18e1961c42b8df8d1817cfdca, type: 3}
+        m_TargetAssemblyTypeName: KSM_SoundManager, Assembly-CSharp
+        m_MethodName: PlayUiClick
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 1
+        m_CallState: 2
 --- !u!114 &1967014108
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -13409,6 +13530,18 @@ MonoBehaviour:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
           m_IntArgument: 1
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+      - m_Target: {fileID: 5540493155211487559, guid: 1c1616d18e1961c42b8df8d1817cfdca, type: 3}
+        m_TargetAssemblyTypeName: KSM_SoundManager, Assembly-CSharp
+        m_MethodName: PlayUiClick
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
           m_FloatArgument: 0
           m_StringArgument: 
           m_BoolArgument: 0
