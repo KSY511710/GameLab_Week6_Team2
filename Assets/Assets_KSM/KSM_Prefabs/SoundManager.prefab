@@ -118,17 +118,18 @@ MonoBehaviour:
     randomPitchRange: 0
     outputGroupOverride: {fileID: 0}
   - sfxType: 9
-    clip: {fileID: 8300000, guid: e1d0899e9a9be344aba301bb9f3dfb69, type: 3}
+    clip: {fileID: 8300000, guid: ebb46c294b2a2d84aabbe19942c14721, type: 3}
     defaultVolume: 1
     defaultPitch: 1
     randomPitchRange: 0
     outputGroupOverride: {fileID: 0}
   - sfxType: 10
-    clip: {fileID: 8300000, guid: b2add4a33cc90bf489025485256d0bcb, type: 3}
+    clip: {fileID: 8300000, guid: e1d0899e9a9be344aba301bb9f3dfb69, type: 3}
     defaultVolume: 1
     defaultPitch: 1
     randomPitchRange: 0
     outputGroupOverride: {fileID: 0}
+  defaultMoneyExchangeFadeOutSeconds: 0.05
   startBgm: 1
   initialMasterVolume: 1
   initialBgmVolume: 1
