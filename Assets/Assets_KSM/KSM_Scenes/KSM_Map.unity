@@ -4664,10 +4664,10 @@ MonoBehaviour:
   StartGrid: 10
   width: 5
   height: 5
-  maxNorthExpandCount: 100
-  maxSouthExpandCount: 100
-  maxWestExpandCount: 100
-  maxEastExpandCount: 100
+  maxNorthExpandCount: 10
+  maxSouthExpandCount: 10
+  maxWestExpandCount: 10
+  maxEastExpandCount: 10
   groundTilemap: {fileID: 1373344025}
   baseTile: {fileID: 11400000, guid: 2bbafe337f8247541a53c416340f412f, type: 2}
   mainCamera: {fileID: 1285830924}
@@ -4680,15 +4680,15 @@ MonoBehaviour:
   previewBorderColor: {r: 0.95, g: 0.95, b: 0.95, a: 0.95}
   previewFillColor: {r: 0.3679245, g: 0.3679245, b: 0.3679245, a: 0.18}
   previewGuideColor: {r: 1, g: 1, b: 1, a: 0.38}
-  ksmPassivePreviewTile: {fileID: 11400000, guid: baff5a00c86cb8844a3f33a08adb7ed1, type: 2}
-  ksmHoverPreviewTile: {fileID: 11400000, guid: baff5a00c86cb8844a3f33a08adb7ed1, type: 2}
-  ksmPassiveCandidateFillColor: {r: 0.509434, g: 0.509434, b: 0.509434, a: 0.58}
-  ksmPassiveCandidateBorderColor: {r: 0.3679245, g: 0.3679245, b: 0.3679245, a: 0.78}
-  ksmHoverPreviewFillColor: {r: 0.55, g: 0.55, b: 0.55, a: 0.28}
-  ksmHoverPreviewGuideColor: {r: 0.92, g: 0.92, b: 0.92, a: 0.42}
+  ksmLockedOverlayColor: {r: 0, g: 0, b: 0, a: 0.78}
+  ksmHoverOverlayColor: {r: 0, g: 0, b: 0, a: 0.42}
+  ksmHoverOverlayUnaffordableColor: {r: 0, g: 0, b: 0, a: 0.58}
   ksmHoverBorderPulseMinColor: {r: 0.92, g: 0.92, b: 0.92, a: 0.92}
   ksmHoverBorderPulseMaxColor: {r: 1, g: 0.98, b: 0.72, a: 1}
   ksmHoverBorderPulseSpeed: 4.5
+  ksmOverlayZOffset: -0.1
+  ksmBorderThicknessWorld: 0.08
+  ksmOverlaySortingOrderOffset: 10
 --- !u!4 &1068823380
 Transform:
   m_ObjectHideFlags: 0
@@ -5572,6 +5572,9 @@ MonoBehaviour:
   maxCapacity: 12
   inventoryPanel: {fileID: 1448352714}
   capacityText: {fileID: 1838960685}
+  maxNormalCapacity: 3
+  normalInventoryPanel: {fileID: 0}
+  emptySlotPrefab: {fileID: 0}
   allBlockPrefabs:
   - {fileID: 4098214189293580819, guid: fba0f061e24eb59449045552e2f52210, type: 3}
   - {fileID: 3553136110528357208, guid: 0f841574cb917a740adf7ba1512e98da, type: 3}
@@ -9304,6 +9307,8 @@ MonoBehaviour:
   sessionGoalText: {fileID: 96030247}
   exchangeCapText: {fileID: 1980258747}
   expandCostText: {fileID: 313368912}
+  baseRerollCost: 5
+  RerollCostText: {fileID: 0}
 --- !u!4 &1974646476
 Transform:
   m_ObjectHideFlags: 0
@@ -9971,6 +9976,7 @@ MonoBehaviour:
   powerText: {fileID: 1357951966}
   groupMinSize: 9
   groupMinpart: 3
+  GachaConnector: {fileID: 0}
 --- !u!4 &2145336449
 Transform:
   m_ObjectHideFlags: 0
