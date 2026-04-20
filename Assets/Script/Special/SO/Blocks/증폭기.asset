@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Special.Data.SpecialBlockDefinition
   id: amplifier
   displayName: "\uC99D\uD3ED\uAE30"
-  icon: {fileID: -760248212612917335, guid: e652722985d89634e9c773ddc7e7fda0, type: 3}
+  icon: {fileID: 3991652211556920394, guid: 89d0f6f004e2c5444a6d90cbcdb569d9, type: 3}
   shapeCoords:
   - {x: 0, y: 0}
   allowRotation: 0

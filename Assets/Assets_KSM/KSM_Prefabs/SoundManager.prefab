@@ -1,0 +1,137 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &8490173029265067911
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7415286581405616763}
+  - component: {fileID: 5540493155211487559}
+  m_Layer: 0
+  m_Name: SoundManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7415286581405616763
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8490173029265067911}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 937.85144, y: 843.35004, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5540493155211487559
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8490173029265067911}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 88ecfe6d7a0433c49896c9146a088107, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KSM_SoundManager
+  mixer: {fileID: 24100000, guid: 5bd209e3116149e48b0093a44ce5def2, type: 2}
+  bgmMixerGroup: {fileID: 9100814099262438835, guid: 5bd209e3116149e48b0093a44ce5def2, type: 2}
+  sfxMixerGroup: {fileID: 7670342779611349781, guid: 5bd209e3116149e48b0093a44ce5def2, type: 2}
+  masterVolumeParameter: Master
+  bgmVolumeParameter: BGM
+  sfxVolumeParameter: SFX
+  bgmChannelCount: 2
+  defaultBgmFadeSeconds: 1.2
+  bgmEntries:
+  - bgmType: 1
+    clip: {fileID: 8300000, guid: 225bbf0ccffdf73428d5eed9ffc490eb, type: 3}
+    defaultVolume: 1
+    loop: 1
+  - bgmType: 2
+    clip: {fileID: 8300000, guid: 325118448d1afd542b12639cb063238d, type: 3}
+    defaultVolume: 0.4
+    loop: 1
+  sfxChannelCount: 11
+  sfxEntries:
+  - sfxType: 0
+    clip: {fileID: 8300000, guid: 9eb10bbfe030bc049b1de13d91abf234, type: 3}
+    defaultVolume: 1
+    defaultPitch: 1
+    randomPitchRange: 0
+    outputGroupOverride: {fileID: 0}
+  - sfxType: 1
+    clip: {fileID: 8300000, guid: 347a68c550973c64dbdd0f04e1617c25, type: 3}
+    defaultVolume: 1
+    defaultPitch: 1
+    randomPitchRange: 0
+    outputGroupOverride: {fileID: 0}
+  - sfxType: 2
+    clip: {fileID: 8300000, guid: 347a68c550973c64dbdd0f04e1617c25, type: 3}
+    defaultVolume: 1
+    defaultPitch: 1
+    randomPitchRange: 0
+    outputGroupOverride: {fileID: 0}
+  - sfxType: 3
+    clip: {fileID: 8300000, guid: c42f522c00104ed4ca4f2b49815fcb93, type: 3}
+    defaultVolume: 1
+    defaultPitch: 1
+    randomPitchRange: 0
+    outputGroupOverride: {fileID: 0}
+  - sfxType: 4
+    clip: {fileID: 8300000, guid: c0d7891b4cc4e3242bc31a874c625758, type: 3}
+    defaultVolume: 1
+    defaultPitch: 1
+    randomPitchRange: 0
+    outputGroupOverride: {fileID: 0}
+  - sfxType: 5
+    clip: {fileID: 8300000, guid: c398cf5384427044fb81b1d87be26035, type: 3}
+    defaultVolume: 1
+    defaultPitch: 1
+    randomPitchRange: 0
+    outputGroupOverride: {fileID: 0}
+  - sfxType: 6
+    clip: {fileID: 8300000, guid: bcc4389ce46da9645868df8402a49476, type: 3}
+    defaultVolume: 1
+    defaultPitch: 1
+    randomPitchRange: 0
+    outputGroupOverride: {fileID: 0}
+  - sfxType: 7
+    clip: {fileID: 8300000, guid: a01c4904793edba44851a114f2d83fdf, type: 3}
+    defaultVolume: 1
+    defaultPitch: 1
+    randomPitchRange: 0
+    outputGroupOverride: {fileID: 0}
+  - sfxType: 8
+    clip: {fileID: 8300000, guid: 29e3a037b19ee7b4fb327a8320a331e0, type: 3}
+    defaultVolume: 1
+    defaultPitch: 1
+    randomPitchRange: 0
+    outputGroupOverride: {fileID: 0}
+  - sfxType: 9
+    clip: {fileID: 8300000, guid: ebb46c294b2a2d84aabbe19942c14721, type: 3}
+    defaultVolume: 1
+    defaultPitch: 1
+    randomPitchRange: 0
+    outputGroupOverride: {fileID: 0}
+  - sfxType: 10
+    clip: {fileID: 8300000, guid: e1d0899e9a9be344aba301bb9f3dfb69, type: 3}
+    defaultVolume: 1
+    defaultPitch: 1
+    randomPitchRange: 0
+    outputGroupOverride: {fileID: 0}
+  defaultMoneyExchangeFadeOutSeconds: 0.05
+  startBgm: 1
+  initialMasterVolume: 1
+  initialBgmVolume: 1
+  initialSfxVolume: 1
+  verboseLog: 0

@@ -213,20 +213,16 @@ public class PowerAnimationSequencer : MonoBehaviour
     /// </summary>
     private IEnumerator PlayTraceStages(GroupInfo g, string header)
     {
-        StringBuilder accumulated = new StringBuilder(header.Length + 256);
-        accumulated.Append(header);
-
         CalcStage[] order = InfoPanelFormatter.ProgressionStages;
-        bool anyStageShown = false;
+
         for (int i = 0; i < order.Length; i++)
         {
             string section = InfoPanelFormatter.BuildStageSection(g.lastTrace, order[i]);
             if (string.IsNullOrEmpty(section)) continue;
 
-            if (anyStageShown) accumulated.Append('\n');
-            accumulated.Append(section).Append('\n');
-            SetCalcText(accumulated.ToString());
-            anyStageShown = true;
+            // 🌟 핵심 변경: 누적(Append)하지 않고, 고정된 헤더 아래에 현재 단계(section)만 띄웁니다!
+            SetCalcText(header + section);
+
             yield return new WaitForSeconds(stepSeconds);
         }
     }
