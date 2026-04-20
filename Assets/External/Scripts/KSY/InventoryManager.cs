@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
+using System;
 
 public class InventoryManager : MonoBehaviour
 {
@@ -22,6 +23,7 @@ public class InventoryManager : MonoBehaviour
     private int currentBlockCount = 0;
 
     private void Awake() { if (Instance == null) Instance = this; }
+    public static event Action OnButtonPressed;
 
     private void Start()
     {
@@ -74,7 +76,7 @@ public class InventoryManager : MonoBehaviour
         {
             if (slot.childCount == 0)
             {
-                int randomIndex = Random.Range(0, allBlockPrefabs.Count);
+                int randomIndex = UnityEngine.Random.Range(0, allBlockPrefabs.Count);
                 GameObject newBlock = Instantiate(allBlockPrefabs[randomIndex].gameObject, slot);
 
                 newBlock.transform.localPosition = new Vector3(0, 500f, 0);
@@ -168,6 +170,7 @@ public class InventoryManager : MonoBehaviour
         // 1. 돈이 있는지 먼저 확인하고 차감
         if (ResourceManager.Instance.TryPayForReroll())
         {
+            OnButtonPressed?.Invoke();
             StartCoroutine(RefreshShopRoutine());
         }
         else
