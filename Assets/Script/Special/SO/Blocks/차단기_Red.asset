@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Special.Data.SpecialBlockDefinition
   id: power_breaker_red
   displayName: "\uCC28\uB2E8\uAE30[Red]"
-  icon: {fileID: 5797254098664026104, guid: 9c0b05a9ef227ed4ea5ea0056710643c, type: 3}
+  icon: {fileID: 0}
   shapeCoords:
   - {x: 0, y: 0}
   allowRotation: 0
