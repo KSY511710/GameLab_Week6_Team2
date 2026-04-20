@@ -5,7 +5,7 @@ using UnityEngine;
 [RequireComponent(typeof(BoxCollider2D), typeof(SpriteRenderer))]
 public class PlacedBlockVisual : MonoBehaviour
 {
-    /// <summary>시퀀서가 블럭을 강조/감쇠할 때 사용하는 상태. 크기와 색 밝기를 함께 변조한다.</summary>
+    /// <summary>시퀀서가 블럭을 강조/감쇠할 때 사용하는 상태. 색 밝기를 변조한다.</summary>
     public enum SpotlightState { Normal, Focused, Dimmed }
 
     private SpriteRenderer sr;
@@ -24,19 +24,14 @@ public class PlacedBlockVisual : MonoBehaviour
     public Material outlineMaterial;
 
     [Header("Spotlight FX")]
-    [Tooltip("Focused 상태에서 블럭이 커지는 비율. 크기 대비로 주목도를 더한다.")]
-    [SerializeField, Range(1f, 2f)] private float focusedScaleMultiplier = 1.25f;
     [Tooltip("Dimmed 상태에서 색상 RGB에 곱해지는 배율. 값이 낮을수록 주변이 더 어두워진다.")]
     [SerializeField, Range(0f, 1f)] private float dimmedBrightness = 0.22f;
     [Tooltip("스포트라이트 상태 전환에 걸리는 시간.")]
     [SerializeField, Min(0.01f)] private float spotlightTransitionDuration = 0.18f;
-    [Tooltip("플래시 펄스 피크에서 적용되는 추가 크기 배율. Focused 크기 위에 곱해진다.")]
-    [SerializeField, Range(1f, 2f)] private float flashScaleMultiplier = 1.35f;
 
     private GameObject lineTop, lineBottom, lineLeft, lineRight;
     private static Sprite sharedLineSprite;
 
-    private Vector3 baseLocalScale;
     private SpotlightState currentSpotlight = SpotlightState.Normal;
     // 스포트라이트 전환과 플래시가 같은 SpriteRenderer/Transform을 건드리므로,
     // 한 번에 하나의 효과만 돌도록 단일 핸들로 직렬화한다.
@@ -47,7 +42,6 @@ public class PlacedBlockVisual : MonoBehaviour
         sr = GetComponent<SpriteRenderer>();
         originalSprite = sr.sprite;
         originalColor = sr.color;
-        baseLocalScale = transform.localScale;
 
         CreateOutlineLines();
     }
@@ -137,10 +131,9 @@ public class PlacedBlockVisual : MonoBehaviour
             UpdateOutline(false, false, false, false);
         }
 
-        // 그룹 전이 시 진행 중이던 스포트라이트 효과가 남아 있으면 새 베이스 색/크기와 충돌하므로 정리.
+        // 그룹 전이 시 진행 중이던 스포트라이트 효과가 남아 있으면 새 베이스 색과 충돌하므로 정리.
         StopFx();
         currentSpotlight = SpotlightState.Normal;
-        transform.localScale = baseLocalScale;
     }
 
     // (기존 RevealOriginal, HideToGroupColor, OnMouseEnter, OnMouseExit 함수 유지...)
@@ -197,7 +190,7 @@ public class PlacedBlockVisual : MonoBehaviour
         fxCoroutine = StartCoroutine(AnimateToSpotlight());
     }
 
-    /// <summary>짧은 펄스(색 + 크기). 현재 스포트라이트 상태 위에 겹쳐서 튀게 하고, 끝나면 스포트라이트 기준으로 복귀.</summary>
+    /// <summary>짧은 펄스(색). 현재 스포트라이트 상태 위에 겹쳐서 튀게 하고, 끝나면 스포트라이트 기준으로 복귀.</summary>
     public void PlayFlash(Color color, float duration)
     {
         StopFx();
@@ -242,23 +235,15 @@ public class PlacedBlockVisual : MonoBehaviour
         return baseline;
     }
 
-    private float SpotlightScale()
-    {
-        return currentSpotlight == SpotlightState.Focused ? focusedScaleMultiplier : 1f;
-    }
-
     private void ApplySpotlightImmediate()
     {
         if (sr != null) sr.color = ApplySpotlightToColor(GetBaselineColor());
-        transform.localScale = baseLocalScale * SpotlightScale();
     }
 
     private IEnumerator AnimateToSpotlight()
     {
         Color startColor = sr != null ? sr.color : Color.white;
-        Vector3 startScale = transform.localScale;
         Color targetColor = ApplySpotlightToColor(GetBaselineColor());
-        Vector3 targetScale = baseLocalScale * SpotlightScale();
 
         float t = 0f;
         float duration = spotlightTransitionDuration;
@@ -267,11 +252,9 @@ public class PlacedBlockVisual : MonoBehaviour
             t += Time.deltaTime;
             float ease = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / duration));
             if (sr != null) sr.color = Color.Lerp(startColor, targetColor, ease);
-            transform.localScale = Vector3.Lerp(startScale, targetScale, ease);
             yield return null;
         }
         if (sr != null) sr.color = targetColor;
-        transform.localScale = targetScale;
         fxCoroutine = null;
     }
 
@@ -280,8 +263,6 @@ public class PlacedBlockVisual : MonoBehaviour
         if (sr == null) yield break;
 
         Color baselineColor = ApplySpotlightToColor(GetBaselineColor());
-        Vector3 baseScale = baseLocalScale * SpotlightScale();
-        Vector3 peakScale = baseScale * flashScaleMultiplier;
         float half = Mathf.Max(0.01f, totalDuration * 0.5f);
 
         float t = 0f;
@@ -290,7 +271,6 @@ public class PlacedBlockVisual : MonoBehaviour
             t += Time.deltaTime;
             float k = Mathf.Clamp01(t / half);
             sr.color = Color.Lerp(baselineColor, highlight, k);
-            transform.localScale = Vector3.Lerp(baseScale, peakScale, k);
             yield return null;
         }
 
@@ -300,12 +280,10 @@ public class PlacedBlockVisual : MonoBehaviour
             t += Time.deltaTime;
             float k = Mathf.Clamp01(t / half);
             sr.color = Color.Lerp(highlight, baselineColor, k);
-            transform.localScale = Vector3.Lerp(peakScale, baseScale, k);
             yield return null;
         }
 
         sr.color = baselineColor;
-        transform.localScale = baseScale;
         fxCoroutine = null;
     }
 }

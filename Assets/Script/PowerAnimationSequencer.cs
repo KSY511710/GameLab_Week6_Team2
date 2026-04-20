@@ -19,7 +19,7 @@ using UnityEngine;
 /// 일일 정산은 여전히 독립 코루틴이며 큐 진행 중엔 콜백만 수행해 게임 진행을 막지 않는다.
 ///
 /// 두 시퀀스 모두 공용 스포트라이트 API(<see cref="PlacedBlockVisual.SetSpotlight"/>)를 통해
-/// "지금 주목해야 할 발전소"를 크기+밝기 편차로 가리킨다. 나머지 보드는 <c>Dimmed</c>로 깔린다.
+/// "지금 주목해야 할 발전소"를 밝기 편차로 가리킨다. 나머지 보드는 <c>Dimmed</c>로 깔린다.
 /// 진행 중엔 <c>PowerManager.IsAnimating = true</c>로 입력/Skip을 차단하고, 종료 시 해제한다.
 /// </summary>
 public class PowerAnimationSequencer : MonoBehaviour

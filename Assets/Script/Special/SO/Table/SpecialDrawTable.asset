@@ -14,25 +14,25 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Special.Data.SpecialDrawTable
   entries:
   - definition: {fileID: 11400000, guid: 78abbc22daad9b74ba3fb54dcb6f4936, type: 2}
-    weight: 0
+    weight: 1
     isEnabled: 1
   - definition: {fileID: 11400000, guid: 45bde0a2a73dbcc4eabb4eb17aefb2f4, type: 2}
-    weight: 0
+    weight: 1
     isEnabled: 1
   - definition: {fileID: 11400000, guid: 8cecae4793f86864d9d3e0a75c8ad3f6, type: 2}
-    weight: 0
+    weight: 1
     isEnabled: 1
   - definition: {fileID: 11400000, guid: 6aebf3a28e0793f458bb8663fbf8c0be, type: 2}
-    weight: 0
+    weight: 1
     isEnabled: 1
   - definition: {fileID: 11400000, guid: a80af08ff7065634cbc38e6d0ecb9255, type: 2}
-    weight: 0
+    weight: 1
     isEnabled: 1
   - definition: {fileID: 11400000, guid: 0c0b7cb772d9b084e956754c247401a3, type: 2}
-    weight: 0
+    weight: 1
     isEnabled: 1
   - definition: {fileID: 11400000, guid: d83e5140d1310b8479009f1ef7ac9725, type: 2}
-    weight: 0
+    weight: 1
     isEnabled: 1
   - definition: {fileID: 11400000, guid: 540a8f0d54c6bf84090743dc8b7ce0b0, type: 2}
     weight: 1
