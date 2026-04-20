@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// InventoryManager
@@ -87,7 +88,9 @@ public class InventoryManager : MonoBehaviour
     /// TryAddBlock / OnBlockUsed 에서 증감한다.
     /// </summary>
     private int currentBlockCount = 0;
-
+    [Header("🌟 UI 참조")]
+    [Tooltip("상점 전체를 포함하고 있는 UI 패널 오브젝트를 드래그해서 넣어주세요.")]
+    public GameObject shopPanel;
     /// <summary>
     /// 싱글톤 초기화.
     /// </summary>
@@ -109,6 +112,19 @@ public class InventoryManager : MonoBehaviour
         RefillNormalBlocks();
     }
 
+    private void Update()
+    {
+        // 1) 아무도 드래그 중이지 않고
+        // 3) 키보드가 연결되어 있고
+        // 4) R키를 방금 눌렀다면
+        if (!DraggableBlock.IsAnyBlockDragging &&
+            shopPanel != null && !shopPanel.activeInHierarchy &&
+            Keyboard.current != null &&
+            Keyboard.current.rKey.wasPressedThisFrame)
+        {
+            RequestReroll();
+        }
+    }
     /// <summary>
     /// 일반 블럭 상점 슬롯을 maxNormalCapacity 만큼 생성한다.
     /// </summary>

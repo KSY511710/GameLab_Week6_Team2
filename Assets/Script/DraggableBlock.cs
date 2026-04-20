@@ -97,6 +97,7 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
     /// R 키 회전 입력 허용 여부 판단에 사용한다.
     /// </summary>
     private bool isDragging = false;
+    public static bool IsAnyBlockDragging = false;
 
     /// <summary>
     /// 드래그 중 생성되는 프리뷰 고스트 오브젝트다.
@@ -194,7 +195,7 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
     /// </summary>
     private void Update()
     {
-        if (isDragging && Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame)
+        if (isDragging && Keyboard.current != null && Keyboard.current.qKey.wasPressedThisFrame)
         {
             RotateShape();
         }
@@ -251,7 +252,7 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
     public void OnBeginDrag(PointerEventData eventData)
     {
         isDragging = true;
-
+        IsAnyBlockDragging = true;
         if (img != null)
         {
             img.enabled = false;
@@ -337,6 +338,7 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
     public void OnEndDrag(PointerEventData eventData)
     {
         isDragging = false;
+        IsAnyBlockDragging = false;
         PlacementInteractionHub.BroadcastDragEnded();
 
         if (previewGhost != null)
