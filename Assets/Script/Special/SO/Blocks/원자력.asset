@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Special.Data.SpecialBlockDefinition
   id: nuclear_power
   displayName: "\uC6D0\uC790\uB825"
-  icon: {fileID: -760248212612917335, guid: e652722985d89634e9c773ddc7e7fda0, type: 3}
+  icon: {fileID: 1577697214629035688, guid: 98db3875196c03b4b8b7cf0c8f567bdb, type: 3}
   shapeCoords:
   - {x: 0, y: 0}
   allowRotation: 0
