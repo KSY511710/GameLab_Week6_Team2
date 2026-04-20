@@ -841,6 +841,7 @@ MonoBehaviour:
   scrapText: {fileID: 635885539}
   moneyText: {fileID: 1780349803}
   fillSpeed: 1.5
+  settlementStepGap: 0.12
 --- !u!4 &99708515
 Transform:
   m_ObjectHideFlags: 0
@@ -9910,6 +9911,7 @@ MonoBehaviour:
   - {fileID: 4098214189293580819, guid: c290392b3ec499d4bad51b59a6b2176d, type: 3}
   - {fileID: 4098214189293580819, guid: 42076a5d61945bf48a25d2901baaf05e, type: 3}
   - {fileID: 4098214189293580819, guid: f053b8b4ffb91d84698e1be08b992b3e, type: 3}
+  shopPanel: {fileID: 0}
 --- !u!4 &1247645924
 Transform:
   m_ObjectHideFlags: 0
@@ -16307,6 +16309,10 @@ MonoBehaviour:
   baseRerollCost: 5
   RerollCostText: {fileID: 938738855}
   powerGaugeFill: {fileID: 652271013}
+  gameOverPanel: {fileID: 0}
+  finalDayText: {fileID: 0}
+  finalSessionText: {fileID: 0}
+  finalPowerText: {fileID: 0}
 --- !u!4 &1974646476
 Transform:
   m_ObjectHideFlags: 0
