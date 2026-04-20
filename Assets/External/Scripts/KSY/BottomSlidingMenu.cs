@@ -8,6 +8,7 @@ public class BottomSlidingMenu : MonoBehaviour
     public RectTransform panelRect;
     public RectTransform buttonRect;
     public CanvasGroup panelCanvasGroup;
+    public GameObject shopObject;
 
     [Header("설정값")]
     public float expandedPanelWidth = 400f;
@@ -33,8 +34,20 @@ public class BottomSlidingMenu : MonoBehaviour
         {
             panelCanvasGroup.blocksRaycasts = isExpanded;
         }
+        UpdateRaycastState();
     }
+    private void Update()
+    {
+        UpdateRaycastState();
+    }
+    private void UpdateRaycastState()
+    {
+        if (panelCanvasGroup == null || shopObject == null) return;
 
+        // 🌟 수엽 님 요청 사항: Shop이 active(true)면 blocksRaycasts는 false!
+        // shopObject.activeInHierarchy는 부모까지 포함해 실제로 켜져있는지 확인합니다.
+        panelCanvasGroup.blocksRaycasts = !shopObject.activeInHierarchy;
+    }
     public void ToggleMenu()
     {
         if (slideCoroutine != null) StopCoroutine(slideCoroutine);
