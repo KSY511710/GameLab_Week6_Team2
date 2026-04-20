@@ -24,6 +24,6 @@ MonoBehaviour:
   uniqueShapeId: 1002
   role: 1
   maxPerGame: 3
-  maxPerZone: 3
+  maxPerZone: 1
   effectAssets:
   - {fileID: 11400000, guid: c18e65c118dd6314c88a672280c56e1c, type: 2}

@@ -4,8 +4,10 @@ using UnityEngine;
 namespace Special.Runtime
 {
     /// <summary>
-    /// 다른 브랜치에서 10x10 구역(Zone) 시스템이 머지되면 이 인터페이스 구현체를 교체.
-    /// 지금은 SingleZoneFallback 이 전체 보드를 zone 0 으로 리턴한다.
+    /// 보드 셀 ↔ 구역 매핑을 제공하는 seam. 좌표는 배열 인덱스(0..W-1, 0..H-1) 기준.
+    /// 기본 런타임 구현은 <c>Special.Integration.GridZoneService</c> 로 GridManager.Awake 에서 주입되며
+    /// 실제 열린 구역(region) 구조를 반영한다.
+    /// 테스트/씬 초기화 전에는 <see cref="SingleZoneFallback"/> 이 기본값으로 응답한다.
     /// </summary>
     public interface IZoneService
     {

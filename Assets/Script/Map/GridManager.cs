@@ -177,6 +177,53 @@ public partial class GridManager : MonoBehaviour
     public static event Action OnExpandStateChanged;
 
     /// <summary>
+    /// 보드 구성(셀 내용 / 그룹 상태 / 열린 구역) 이 변경되었을 때 발화되는 이벤트.
+    ///
+    /// 발화 시점
+    /// - 블럭 배치 직후 (그룹 판정 + 아웃라인 갱신이 끝난 뒤)
+    /// - 새 구역이 열린 직후
+    /// - 초기 구역 세팅이 끝난 Start 말미
+    ///
+    /// 소비자 예시
+    /// - <see cref="PowerPlantZoneVisualizer"/> : 그룹 점유 / 인접 금지 RuleTile overlay 재구성.
+    /// - (확장 여지) 디버그 오버레이, 튜토리얼 트리거 등.
+    ///
+    /// GridManager 는 구독자 존재 여부를 모른다. 새 시각화 레이어가 추가되어도 GridManager 는 건드릴 필요 없음.
+    /// </summary>
+    public static event Action OnBoardMutated;
+
+    /// <summary>
+    /// 구역 좌표 기반 IZoneService 어댑터. Awake 에서 ZoneServiceLocator 에 주입된다.
+    /// 특수 블럭 시스템이 실제 맵 구역 구조를 인식하도록 하는 seam 이다.
+    /// GridManager 는 구체 구현 타입을 몰라야 하므로 필드 타입은 인터페이스로 유지.
+    /// </summary>
+    private Special.Runtime.IZoneService zoneService;
+
+    /// <summary>
+    /// 씬 내 다른 MonoBehaviour 가 Start 시점에 ZoneServiceLocator.Current 를 조회하더라도
+    /// SingleZoneFallback 이 아니라 실제 구역 서비스를 받도록 Awake 에서 locator 를 선행 주입한다.
+    /// </summary>
+    private void Awake()
+    {
+        zoneService = new Special.Integration.GridZoneService(this);
+        Special.Runtime.ZoneServiceLocator.SetService(zoneService);
+    }
+
+    /// <summary>
+    /// 씬이 내려가거나 GridManager 가 파괴될 때 locator 를 fallback 으로 원복.
+    /// 다음 씬에서 남은 어댑터가 이미 파괴된 GridManager 를 참조하는 것을 방지.
+    /// </summary>
+    private void OnDestroy()
+    {
+        if (zoneService != null &&
+            ReferenceEquals(Special.Runtime.ZoneServiceLocator.Current, zoneService))
+        {
+            Special.Runtime.ZoneServiceLocator.SetService(new Special.Runtime.SingleZoneFallback());
+        }
+        zoneService = null;
+    }
+
+    /// <summary>
     /// 시작 시 초기 구역 (0,0)을 연다.
     /// </summary>
     private void Start()
@@ -204,6 +251,7 @@ public partial class GridManager : MonoBehaviour
 
         UpdateCameraTarget(true);
         RaiseExpandStateChanged();
+        RaiseBoardMutated();
     }
 
     /// <summary>
@@ -251,6 +299,13 @@ public partial class GridManager : MonoBehaviour
     /// <summary>월드 셀을 배열 인덱스로 바꾸는 공개 래퍼. 드래그 스코프 프리뷰에서 사용.</summary>
     public Vector2Int WorldCellToArrayIndex(Vector3Int worldCell)
         => TileToArrayIndex(worldCell.x, worldCell.y);
+
+    /// <summary>
+    /// 배열 인덱스를 월드 셀 좌표로 되돌린다. <see cref="WorldCellToArrayIndex"/> 의 역함수.
+    /// 특수 블럭/구역 어댑터처럼 배열 인덱스 ↔ 구역 좌표 변환이 필요한 바깥 모듈용 공개 헬퍼.
+    /// </summary>
+    public Vector3Int ArrayIndexToWorldCell(Vector2Int arrayIdx)
+        => new Vector3Int(arrayIdx.x + currentOffset.x, arrayIdx.y + currentOffset.y, 0);
 
     /// <summary>
     /// 월드 셀이 현재 열린 구역 안에 포함되는지 검사한다.
@@ -703,6 +758,10 @@ public partial class GridManager : MonoBehaviour
             PowerManager.Instance.CalculateTotalPower(boardData, width, height);
             PowerManager.Instance.UpdateAllOutlines(boardData, width, height);
         }
+
+        // 그룹 판정이 끝난 "최종" 상태를 시각 레이어에 전파한다.
+        // CheckAndFormGroups 이후에 발화해야 새로 형성된 발전소의 점유/차단 영역이 즉시 overlay 에 반영된다.
+        RaiseBoardMutated();
     }
 
     /// <summary>
@@ -1065,6 +1124,10 @@ public partial class GridManager : MonoBehaviour
             PowerManager.Instance.CalculateTotalPower(boardData, width, height);
             PowerManager.Instance.UpdateAllOutlines(boardData, width, height);
         }
+
+        // 새로 열린 구역이 기존 발전소와 인접할 수 있으므로 overlay 도 재평가한다.
+        // (예: 발전소 옆 구역을 나중에 여는 케이스 — 그 구역의 인접 금지 셀이 비로소 나타난다.)
+        RaiseBoardMutated();
     }
 
     /// <summary>
@@ -1388,6 +1451,21 @@ public partial class GridManager : MonoBehaviour
     private void RaiseExpandStateChanged()
     {
         OnExpandStateChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// 보드 구성 변경 이벤트 발행. 구독자는 예외에 안전해야 함을 가정하지 않고 방어한다.
+    /// 한 구독자의 예외가 다른 구독자/호출자를 오염시키지 않도록 개별 invoke + 예외 격리.
+    /// </summary>
+    private void RaiseBoardMutated()
+    {
+        Action handlers = OnBoardMutated;
+        if (handlers == null) return;
+        foreach (Delegate d in handlers.GetInvocationList())
+        {
+            try { ((Action)d)?.Invoke(); }
+            catch (Exception e) { Debug.LogException(e); }
+        }
     }
 
     /// <summary>
