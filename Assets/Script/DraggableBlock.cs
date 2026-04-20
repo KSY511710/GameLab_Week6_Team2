@@ -247,6 +247,8 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
         }
 
         PlayRotateSfx();
+        UpdateGhostValidity(lastCellPos);
+        PlacementInteractionHub.BroadcastDragMoved(lastCellPos, shapeCoords, null, (int)companyColor, (int)symbolType);
     }
     private void CancelDrag()
     {
