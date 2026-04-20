@@ -97,6 +97,12 @@ public class ResourceManager : MonoBehaviour
     public TextMeshProUGUI RerollCostText;
     [Header("발전량 게이지 UI")]
     public Image powerGaugeFill;
+    [Header("Game Over UI")]
+    [Tooltip("게임 오버 시 띄울 패널 오브젝트")]
+    public GameObject gameOverPanel;
+    public TextMeshProUGUI finalDayText;      // "15일 진행"
+    public TextMeshProUGUI finalSessionText;  // "세션 3 도달"
+    public TextMeshProUGUI finalPowerText;    // "총 15,200 GWh 생산"
 
     // ==========================================================
     //   Runtime State
@@ -113,6 +119,7 @@ public class ResourceManager : MonoBehaviour
     private int skippedDaysTotal;        // 누적 스킵 일수 (특수 블럭 조건용)
     private bool gameOver;
     private bool lastCanSkip;
+    private int totalAccumulatedElectricity;
 
     // Exchange
     private int dailyExchangeCap;         // 세션 시작 시 고정, 매일 사용
@@ -154,6 +161,7 @@ public class ResourceManager : MonoBehaviour
     public int BasicDrawCountThisSession => basicDrawCountThisSession;
     public int ThemeDrawCountThisSession => themeDrawCountThisSession;
     public bool IsGameOver             => gameOver;
+    public int TotalAccumulatedElectricity => totalAccumulatedElectricity;
 
     // ==========================================================
     //   Unity Lifecycle
@@ -161,6 +169,7 @@ public class ResourceManager : MonoBehaviour
 
     private void Awake()
     {
+        Time.timeScale = 1f;
         if (Instance == null)
         {
             Instance = this;
@@ -235,6 +244,7 @@ public class ResourceManager : MonoBehaviour
         totalDay        = 1;
         todayProduction = 0;
         expandCount     = 0;
+        totalAccumulatedElectricity = 0;
     }
 
     // ==========================================================
@@ -298,6 +308,7 @@ public class ResourceManager : MonoBehaviour
         // 1. 오늘 생산량 스냅샷
         todayProduction = PowerManager.Instance != null ? PowerManager.Instance.GetTotalPower() : 0;
         AddCurrency(CurrencyType.Electricity, todayProduction);
+        totalAccumulatedElectricity += todayProduction;
 
         // 1-b. 특수 블럭 티켓 생산 훅 (효과 k) — 등록된 콜백이 없으면 아무 일도 일어나지 않음
         var ticketCtx = new TicketSettleContext();
@@ -375,19 +386,40 @@ public class ResourceManager : MonoBehaviour
 
         return true;
     }
+    public void TriggerGameOver()
+    {
+        gameOver = true;
 
+        if (gameOverPanel != null)
+        {
+            gameOverPanel.SetActive(true);
+
+            // 🌟 기록된 데이터들을 UI에 넣어줍니다.
+            if (finalDayText != null)
+                finalDayText.text = $"{totalDay}일간의 기록";
+
+            if (finalSessionText != null)
+                finalSessionText.text = $"최종 세션: {sessionIndex + 1}";
+
+            if (finalPowerText != null)
+                finalPowerText.text = $"생산 전력: {totalAccumulatedElectricity:N0} GWh";
+            // (:N0을 붙이면 1,000 단위 쉼표가 생겨서 더 전문적으로 보입니다!)
+        }
+
+        Time.timeScale = 0f; // 시간 정지
+        OnGameOver?.Invoke();
+    }
     private void CheckDailyGoalOrGameOver()
     {
         if (todayProduction < dailyProductionGoal)
         {
-            gameOver = true;
-            Debug.Log($"<color=red>게임 오버!</color> 일일 생산 {todayProduction} < 목표 {dailyProductionGoal}");
-            OnGameOver?.Invoke();
-            return;
+            TriggerGameOver();
         }
-
-        Debug.Log($"<color=cyan>세션 {sessionIndex + 1} 일일 목표 달성!</color> ({todayProduction} ≥ {dailyProductionGoal})");
-        AdvanceToNextSession();
+        else
+        {
+            Debug.Log($"<color=cyan>세션 {sessionIndex + 1} 목표 달성!</color>");
+            AdvanceToNextSession();
+        }
     }
 
     private void AdvanceToNextSession()

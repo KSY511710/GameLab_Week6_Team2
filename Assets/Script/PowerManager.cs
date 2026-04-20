@@ -749,12 +749,21 @@ public class PowerManager : MonoBehaviour
         if (IsAnimating) return;
 
         // 0. 정산 직전 라이브 파워 리프레시.
-        //    PowerPlant 솔로 그룹의 groupPower (= EstimateLivePower 합) 를 지금 이 순간 보드 상태 기준으로 재산출해
-        //    CalculateTotalPower 가 마지막으로 불린 이후 보드가 바뀌었어도 SettlementData 에 최신 값이 실리도록 한다.
         RecalculateAllGroupPowers();
 
+        // 🌟 [추가된 핵심 로직] 애니메이션 시작 전에 미리 D-Day와 목표 달성 여부를 검사!
+        if (ResourceManager.Instance != null && ResourceManager.Instance.CurrentD_Day <= 1)
+        {
+            // 오늘이 D-Day(1일 남음)인데, 현재 총 발전량이 목표치보다 낮다면?
+            if (GetTotalPower() < ResourceManager.Instance.DailyProductionGoal)
+            {
+                Debug.Log("<color=red>목표 미달! 정산 연출 없이 즉시 게임오버.</color>");
+                ResourceManager.Instance.TriggerGameOver(); // 게임오버 연출 실행
+                return; // 🛑 여기서 함수를 강제 종료해서 아래의 정산 애니메이션이 안 나오게 막습니다!
+            }
+        }
+
         // 1. 효과별 일일 생산 기여분 수집 페이즈.
-        //    비-PowerPlant 효과가 ProductionSettle 훅에서 SubmitSpecialContribution 을 호출해 pendingContributions 를 채운다.
         pendingContributions.Clear();
         EffectRuntime.Instance.NotifyProductionSettle();
 
@@ -762,7 +771,6 @@ public class PowerManager : MonoBehaviour
         SettlementData data = BuildSettlementData();
 
         // 3. 애니메이션 & 사후 처리.
-        //    NotifyDailySettle 은 애니메이션 후 시각/타이머 계열 효과용으로 유지.
         if (SettlementUIController.Instance != null)
         {
             SetAnimating(true);
@@ -770,7 +778,7 @@ public class PowerManager : MonoBehaviour
             SettlementUIController.Instance.PlaySettlementAnimation(data, () =>
             {
                 FinalizeDailySettlement();
-                
+
                 GachaConnector.OnOffShop(true);
                 SetAnimating(false);
             });
