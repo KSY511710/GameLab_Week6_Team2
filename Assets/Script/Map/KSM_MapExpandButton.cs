@@ -12,6 +12,12 @@ using UnityEngine.UI;
 /// 3. hover 시 GridManager의 KSM 전용 후보 강조 함수를 직접 호출한다.
 /// 4. 클릭 시 실제 확장을 시도한다.
 /// 5. GridManager 본체의 기본 hover preview 흐름은 사용하지 않는다.
+/// 6. 확장 성공 시 Expansion SFX를 재생한다.
+/// 
+/// 사운드 규칙:
+/// - hover 시에는 소리를 재생하지 않는다.
+/// - 클릭했더라도 확장 실패면 소리를 재생하지 않는다.
+/// - 실제 확장 성공 시점에만 Expansion SFX를 1회 재생한다.
 /// </summary>
 [RequireComponent(typeof(Button))]
 [RequireComponent(typeof(Image))]
@@ -275,7 +281,7 @@ public class KSM_MapExpandButton : MonoBehaviour, IPointerEnterHandler, IPointer
 
     /// <summary>
     /// 클릭 시 실제 확장을 시도한다.
-    /// 성공 시 hover 강조를 지운다.
+    /// 성공 시 hover 강조를 지우고 Expansion SFX를 재생한다.
     /// </summary>
     private void OnClickExpand()
     {
@@ -289,10 +295,26 @@ public class KSM_MapExpandButton : MonoBehaviour, IPointerEnterHandler, IPointer
         if (result == KSM_ExpandResult.Success)
         {
             gridManager.KSM_ClearExpansionHoverPreview();
+            PlayExpansionSfx();
         }
 
         RefreshInteractableState();
         RefreshCostText();
+    }
+
+    /// <summary>
+    /// 확장 성공 SFX를 안전하게 재생한다.
+    /// 
+    /// 역할:
+    /// - KSM_SoundManager가 존재할 때만 Expansion SFX를 재생한다.
+    /// - 사운드 매니저가 없더라도 오류 없이 넘어가게 한다.
+    /// </summary>
+    private void PlayExpansionSfx()
+    {
+        if (KSM_SoundManager.Instance != null)
+        {
+            KSM_SoundManager.Instance.PlayExpansion();
+        }
     }
 
     /// <summary>

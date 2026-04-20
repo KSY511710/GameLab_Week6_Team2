@@ -496,7 +496,11 @@ public class PowerManager : MonoBehaviour
             SpecialBlockInstance inst = SpecialBlockRegistry.Instance.FindByFootprintCell(pos);
             if (inst != null) inst.groupId = newGroup.groupID;
         }
+
         EffectRuntime.Instance.NotifyGroupFormed(newGroup);
+
+        // 발전소 건설 완료 SFX
+        PlayConstructionCompleteSfx();
 
         if (PowerAnimationSequencer.Instance != null)
         {
@@ -504,6 +508,20 @@ public class PowerManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 일반 그룹형 발전소가 새로 완성된 순간 Construction SFX를 1회 재생한다.
+    /// 
+    /// 주의:
+    /// - PowerPlant 솔로 그룹에는 사용하지 않는다.
+    /// - 실제 CreateNewGroup 경로에서만 호출한다.
+    /// </summary>
+    private void PlayConstructionCompleteSfx()
+    {
+        if (KSM_SoundManager.Instance != null)
+        {
+            KSM_SoundManager.Instance.PlaySfx(KSM_SfxType.Construction);
+        }
+    }
     public void CalculateTotalPower(BlockData[,] board, int width, int height)
     {
         // 훅은 CreateNewGroup 시점에만 fire 하고, 이후 새로 들어온 특수 블럭은
