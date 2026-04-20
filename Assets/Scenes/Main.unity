@@ -3596,6 +3596,10 @@ PrefabInstance:
       value: 5.5
       objectReference: {fileID: 0}
     - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
+      propertyPath: moveCameraOnHoverPreview
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7140580195912033744, guid: 66ab808aa06c27a44bf861087fd01881, type: 3}
       propertyPath: ksmHoverBorderPulseMinColor.a
       value: 1
       objectReference: {fileID: 0}
@@ -7224,6 +7228,7 @@ GameObject:
   - component: {fileID: 1285830924}
   - component: {fileID: 1285830923}
   - component: {fileID: 1285830926}
+  - component: {fileID: 1285830927}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -7349,6 +7354,38 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
+--- !u!114 &1285830927
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1285830922}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0322363aec9cabc4884ea349d61e7689, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KSM_CameraController
+  targetCamera: {fileID: 1285830924}
+  gridManager: {fileID: 135244141}
+  zoomImpulsePerWheelStep: 7
+  zoomFrictionPerSecond: 42
+  maxZoomMomentum: 12
+  minOrthographicSize: 3.2
+  maxOrthographicSize: 28
+  zoomTowardMouse: 1
+  zoomAnchorHoldDuration: 0.1
+  ignoreZoomWhenPointerOverUI: 1
+  panSensitivity: 1
+  ignorePanWhenPointerOverUI: 1
+  positionSmoothTime: 0.05
+  zoomSmoothTime: 0.08
+  clampToMapBounds: 1
+  clampPaddingWorld: 2
+  useFullNavigationBounds: 1
+  recenterAxisWhenViewportExceedsBounds: 0
+  autoRevealEnterOrthoSize: 4.8
+  autoRevealExitOrthoSize: 5.3
 --- !u!1 &1300323436
 GameObject:
   m_ObjectHideFlags: 0

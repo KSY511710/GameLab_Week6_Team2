@@ -197,6 +197,11 @@ public class KSM_MapExpandButton : MonoBehaviour, IPointerEnterHandler, IPointer
 
     /// <summary>
     /// 비활성화 시 이벤트를 해제하고 hover 강조를 정리한다.
+    ///
+    /// 중요:
+    /// hover 중이던 버튼이 비활성화될 때 Tilemap이 이미 파괴된 상태일 수 있다.
+    /// 이 경우 GridManager의 hover cleanup 내부에서 SetTile 계열 접근이 일어나면
+    /// MissingReferenceException이 날 수 있으므로, groundTilemap 생존 여부를 먼저 확인한다.
     /// </summary>
     private void OnDisable()
     {
@@ -209,7 +214,7 @@ public class KSM_MapExpandButton : MonoBehaviour, IPointerEnterHandler, IPointer
         ResourceManager.OnCurrencyChanged -= HandleCurrencyChanged;
         PowerManager.OnTotalPowerChanged -= HandleBoardOrAnimationChanged;
 
-        if (isHovering && gridManager != null)
+        if (isHovering && gridManager != null && gridManager.groundTilemap != null)
         {
             gridManager.KSM_ClearExpansionHoverPreview();
         }
