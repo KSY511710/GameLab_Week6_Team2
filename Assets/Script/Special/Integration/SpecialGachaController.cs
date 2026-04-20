@@ -31,7 +31,6 @@ namespace Special.Integration
         public bool verboseLog = true;
 
         public static event Action<SpecialBlockDefinition> OnSpecialBlockDrawn;
-        public static event Action OnButtonPressed;
 
         public void OnClickSpecialDraw()
         {
@@ -65,7 +64,7 @@ namespace Special.Integration
                 ResourceManager.Instance.AddTicket(cost);
                 return;
             }
-            OnButtonPressed?.Invoke();
+
             // 4. 정의 → UI 프리팹 매핑. 누락 시 상태를 되돌리고 실패 보고.
             SpecialDraggableBlock prefab = FindPrefabFor(rolled);
             if (prefab == null)

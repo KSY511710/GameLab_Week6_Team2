@@ -4,6 +4,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Skip 버튼의 활성/비활성을 ResourceManager.OnSkipAvailability 에 따라 자동 토글하고,
 /// 버튼 클릭을 ResourceManager.TrySkip() 에 위임한다.
+/// 클릭 시 UI Click SFX를 1회 재생한다.
 /// </summary>
 [RequireComponent(typeof(Button))]
 public class SkipButtonController : MonoBehaviour
@@ -47,6 +48,18 @@ public class SkipButtonController : MonoBehaviour
 
     private void OnSkipClicked()
     {
+        PlayUiClickSfx();
         ResourceManager.Instance?.TrySkip();
+    }
+
+    /// <summary>
+    /// 일반 버튼 클릭음을 안전하게 재생한다.
+    /// </summary>
+    private void PlayUiClickSfx()
+    {
+        if (KSM_SoundManager.Instance != null)
+        {
+            KSM_SoundManager.Instance.PlayUiClick();
+        }
     }
 }
