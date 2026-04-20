@@ -123,18 +123,23 @@ public class KSM_MapExpandButtonManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 비활성화 시 이벤트를 해제하고, 생성한 버튼과 후보 타일을 정리한다.
+    /// 비활성화 시 이벤트를 해제하고 생성한 버튼만 정리한다.
+    ///
+    /// 중요:
+    /// 여기서 passive candidate 타일까지 지워버리면
+    /// locked region에 미리 깔아둔 baseTile이 사라져서
+    /// Ground Tilemap이 갑자기 중앙만 남은 것처럼 보일 수 있다.
+    ///
+    /// 따라서 OnDisable에서는:
+    /// 1. 이벤트 해제
+    /// 2. 버튼 오브젝트만 정리
+    /// 까지만 수행하고,
+    /// 맵 타일/오버레이 정리는 하지 않는다.
     /// </summary>
     private void OnDisable()
     {
         GridManager.OnExpandStateChanged -= HandleExpandStateChanged;
         ClearAllButtons();
-
-        if (gridManager != null)
-        {
-            gridManager.KSM_ClearPassiveExpandCandidates();
-            gridManager.KSM_ClearExpansionHoverPreview();
-        }
     }
 
     /// <summary>
@@ -182,7 +187,7 @@ public class KSM_MapExpandButtonManager : MonoBehaviour
             return;
         }
 
-        // 먼저 후보 타일을 다시 깔아 둔다.
+        // 후보 타일을 다시 깔아 둔다.
         gridManager.KSM_RefreshPassiveExpandCandidates();
 
         List<Vector2Int> openedRegions = gridManager.GetOpenedRegions();

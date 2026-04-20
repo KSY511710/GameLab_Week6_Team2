@@ -1027,7 +1027,11 @@ public partial class GridManager : MonoBehaviour
         FillWorldRectWithBaseTile(targetRect);
         RefreshTilesAroundRect(targetRect);
 
-        UpdateCameraTarget(false);
+        // 확장 직후 GridManager가 카메라를 다시 맞추면,
+        // 유저가 KSM_CameraController로 줌/팬하는 입력과 충돌해서
+        // 카메라가 원래 위치/배율로 복귀하려는 문제가 생긴다.
+        // 따라서 확장 후 자동 카메라 보정은 하지 않는다.
+        // UpdateCameraTarget(false);
 
         if (PowerManager.Instance != null)
         {

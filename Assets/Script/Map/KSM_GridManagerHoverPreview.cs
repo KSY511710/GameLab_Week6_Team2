@@ -92,6 +92,10 @@ public partial class GridManager
     /// 최대 확장 범위 안의 모든 locked region에 대해
     /// 1) baseTile을 먼저 깔고
     /// 2) 그 위에 검은 반투명 오버레이를 올린다.
+    ///
+    /// 중요:
+    /// 이 메서드는 실제 타일맵에 SetTile / SetColor를 수행하므로
+    /// groundTilemap 또는 baseTile이 파괴/누락된 경우에는 즉시 종료해야 한다.
     /// </summary>
     public void KSM_RefreshPassiveExpandCandidates()
     {
@@ -151,6 +155,16 @@ public partial class GridManager
     /// <summary>
     /// 현재 생성된 locked region 오버레이와
     /// locked region용 baseTile을 모두 제거한다.
+    ///
+    /// 중요:
+    /// 씬 종료 / 비활성화 순서에서는 Tilemap이 먼저 파괴될 수 있다.
+    /// 이 경우 오버레이 GameObject는 안전하게 지울 수 있지만,
+    /// Tilemap.SetTile 호출은 MissingReferenceException을 발생시킬 수 있다.
+    ///
+    /// 따라서:
+    /// - hover 펄스는 항상 정지
+    /// - Tilemap이 살아 있으면 locked baseTile 정리 수행
+    /// - Tilemap이 죽었으면 baseTile 정리는 건너뛰고 오버레이 GameObject만 제거
     /// </summary>
     public void KSM_ClearPassiveExpandCandidates()
     {
@@ -158,11 +172,13 @@ public partial class GridManager
 
         List<Vector2Int> keys = new List<Vector2Int>(ksmLockedRegionOverlays.Keys);
 
+        bool canTouchTilemap = groundTilemap != null;
+
         for (int i = 0; i < keys.Count; i++)
         {
             Vector2Int regionCoord = keys[i];
 
-            if (!IsRegionOpened(regionCoord))
+            if (canTouchTilemap && !IsRegionOpened(regionCoord))
             {
                 KSM_ClearBaseTilesForLockedRegion(regionCoord);
             }
@@ -223,6 +239,15 @@ public partial class GridManager
 
     /// <summary>
     /// hover 강조 상태 제거 내부 구현.
+    ///
+    /// 중요:
+    /// 기존에는 여기서 항상 KSM_RefreshPassiveExpandCandidates()를 호출했는데,
+    /// 비활성화/씬 종료 순서에서 Tilemap이 먼저 죽으면 내부 SetTile 접근이 터질 수 있다.
+    ///
+    /// 따라서:
+    /// 1. 시각 강조 상태만 먼저 끄고
+    /// 2. preview 상태 플래그를 초기화한 뒤
+    /// 3. Tilemap과 baseTile이 살아 있을 때만 passive candidate를 다시 그림
     /// </summary>
     private void KSM_ClearExpansionHoverPreview(bool restoreCamera)
     {
@@ -231,6 +256,11 @@ public partial class GridManager
         isPreviewActive = false;
         hasPreviewRegion = false;
         currentPreviewRegion = new Vector2Int(int.MinValue, int.MinValue);
+
+        if (groundTilemap == null || baseTile == null)
+        {
+            return;
+        }
 
         KSM_RefreshPassiveExpandCandidates();
     }
@@ -250,9 +280,17 @@ public partial class GridManager
 
     /// <summary>
     /// locked region 아래에 흰 baseTile이 전부 깔리도록 보장한다.
+    ///
+    /// 중요:
+    /// 이 메서드는 Tilemap에 직접 접근하므로 groundTilemap/baseTile이 유효할 때만 동작해야 한다.
     /// </summary>
     private void KSM_EnsureBaseTilesForLockedRegion(Vector2Int regionCoord)
     {
+        if (groundTilemap == null || baseTile == null)
+        {
+            return;
+        }
+
         RectInt rect = GetRegionRect(regionCoord);
 
         for (int x = rect.xMin; x < rect.xMax; x++)
@@ -277,9 +315,17 @@ public partial class GridManager
 
     /// <summary>
     /// locked region용 baseTile을 제거한다.
+    ///
+    /// 중요:
+    /// Tilemap이 이미 파괴된 경우 호출되더라도 즉시 종료해야 한다.
     /// </summary>
     private void KSM_ClearBaseTilesForLockedRegion(Vector2Int regionCoord)
     {
+        if (groundTilemap == null)
+        {
+            return;
+        }
+
         RectInt rect = GetRegionRect(regionCoord);
 
         for (int x = rect.xMin; x < rect.xMax; x++)
@@ -303,9 +349,18 @@ public partial class GridManager
     /// <summary>
     /// 특정 region의 오버레이가 존재하도록 보장한다.
     /// 없으면 새로 생성한다.
+    ///
+    /// 중요:
+    /// 새 오버레이의 월드 위치/크기 계산에는 Tilemap이 필요하므로,
+    /// groundTilemap이 이미 사라졌다면 생성 자체를 건너뛴다.
     /// </summary>
     private void KSM_EnsureOverlayForRegion(Vector2Int regionCoord)
     {
+        if (groundTilemap == null)
+        {
+            return;
+        }
+
         if (ksmLockedRegionOverlays.TryGetValue(regionCoord, out KSM_RuntimeRegionOverlay existingOverlay))
         {
             KSM_UpdateOverlayTransform(regionCoord, existingOverlay);
@@ -373,6 +428,7 @@ public partial class GridManager
 
     /// <summary>
     /// 특정 region 오버레이를 제거한다.
+    /// Tilemap과 무관하게 GameObject만 지우는 경로이므로 항상 안전하게 실행 가능하다.
     /// </summary>
     private void KSM_RemoveOverlayForRegion(Vector2Int regionCoord)
     {
@@ -437,9 +493,21 @@ public partial class GridManager
 
     /// <summary>
     /// region rect의 월드 중심과 월드 크기를 계산한다.
+    ///
+    /// 중요:
+    /// Tilemap이 이미 파괴된 상태에서도 호출될 수 있으므로,
+    /// out 파라미터를 안전한 기본값으로 초기화한 뒤 groundTilemap 유효 시에만 계산한다.
     /// </summary>
     private void KSM_GetRegionWorldBounds(RectInt rect, out Vector3 centerWorld, out Vector2 sizeWorld)
     {
+        centerWorld = Vector3.zero;
+        sizeWorld = Vector2.zero;
+
+        if (groundTilemap == null)
+        {
+            return;
+        }
+
         Vector3 worldMin = groundTilemap.CellToWorld(new Vector3Int(rect.xMin, rect.yMin, 0));
         Vector3 worldMax = groundTilemap.CellToWorld(new Vector3Int(rect.xMax, rect.yMax, 0));
 
@@ -457,9 +525,19 @@ public partial class GridManager
 
     /// <summary>
     /// 오버레이 transform / 크기를 현재 타일맵 상태에 맞게 갱신한다.
+    ///
+    /// 중요:
+    /// 기존에는 overlay만 체크하고 Tilemap 생존 여부를 보지 않았는데,
+    /// 씬 종료 순서상 Tilemap이 먼저 죽으면 여기서 CellToWorld 접근이 터질 수 있다.
+    /// 따라서 groundTilemap == null 이면 즉시 종료한다.
     /// </summary>
     private void KSM_UpdateOverlayTransform(Vector2Int regionCoord, KSM_RuntimeRegionOverlay overlay)
     {
+        if (groundTilemap == null)
+        {
+            return;
+        }
+
         if (overlay == null || overlay.rootObject == null || overlay.fillRenderer == null)
         {
             return;
