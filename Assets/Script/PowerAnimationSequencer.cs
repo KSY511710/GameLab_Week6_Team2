@@ -1,11 +1,13 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Text;
 using Special.Data;
 using Special.Effects;
 using Special.Integration;
 using Special.Runtime;
 using TMPro;
+using UI.Info;
 using UnityEngine;
 
 /// <summary>
@@ -180,22 +182,53 @@ public class PowerAnimationSequencer : MonoBehaviour
         FlashSubset(g.members, highlightColor, highlightDuration);
         yield return new WaitForSeconds(highlightDuration);
 
-        SetCalcText($"<size=30><b>⚡ 발전소 {g.groupID} 완성!</b></size>\n\n" +
-                    $"기본 {g.baseProduction} + 부품 {g.uniqueParts}종\n" +
-                    $"= <color=#FFE066>{g.baseProduction + g.uniqueParts}</color>");
-        yield return new WaitForSeconds(stepSeconds);
+        string header = $"<size=30><b>⚡ 발전소 {g.groupID} 완성!</b></size>\n\n";
 
-        SetCalcText($"<size=30><b>⚡ 발전소 {g.groupID} 완성!</b></size>\n\n" +
-                    $"형태 시너지 보너스\n= <color=#66D9FF>x {g.completionMultiplier}</color>");
-        yield return new WaitForSeconds(stepSeconds);
+        if (g.lastTrace != null && g.lastTrace.Steps.Count > 0)
+        {
+            yield return PlayTraceStages(g, header);
+        }
+        else
+        {
+            // Trace 가 유실된 경우의 폴백 — 라이브 경로에서 Trace=null 로 호출됐을 때만 해당.
+            SetCalcText(header + $"기본 {g.baseProduction} + 부품 {g.uniqueParts}종\n" +
+                        $"= <color=#FFE066>{g.baseProduction + g.uniqueParts}</color>");
+            yield return new WaitForSeconds(stepSeconds);
 
-        SetCalcText($"<size=30><b>⚡ 발전소 {g.groupID} 완성!</b></size>\n\n" +
-                    $"색상 순도 배율\n= <color=#FF99CC>x {g.colorMultiplier:F2}</color>");
-        yield return new WaitForSeconds(stepSeconds);
+            SetCalcText(header + $"형태 시너지 보너스\n= <color=#66D9FF>x {g.completionMultiplier}</color>");
+            yield return new WaitForSeconds(stepSeconds);
+
+            SetCalcText(header + $"색상 순도 배율\n= <color=#FF99CC>x {g.colorMultiplier:F2}</color>");
+            yield return new WaitForSeconds(stepSeconds);
+        }
 
         SetCalcText($"<size=30><b>⚡ 발전소 {g.groupID} 가동 시작!</b></size>\n\n" +
                     $"최종 발전량\n<color=#FFFF00><size=40><b>+ {Mathf.Round(g.groupPower)} GWh</b></size></color>");
         yield return new WaitForSeconds(postFinalDelay);
+    }
+
+    /// <summary>
+    /// Trace 의 각 CalcStage 를 순서대로 누적해서 보여준다. 빈 단계는 건너뛰며,
+    /// 단계 하나가 쌓일 때마다 stepSeconds 만큼 대기해 "수치가 하나씩 붙는" 연출을 낸다.
+    /// </summary>
+    private IEnumerator PlayTraceStages(GroupInfo g, string header)
+    {
+        StringBuilder accumulated = new StringBuilder(header.Length + 256);
+        accumulated.Append(header);
+
+        CalcStage[] order = InfoPanelFormatter.ProgressionStages;
+        bool anyStageShown = false;
+        for (int i = 0; i < order.Length; i++)
+        {
+            string section = InfoPanelFormatter.BuildStageSection(g.lastTrace, order[i]);
+            if (string.IsNullOrEmpty(section)) continue;
+
+            if (anyStageShown) accumulated.Append('\n');
+            accumulated.Append(section).Append('\n');
+            SetCalcText(accumulated.ToString());
+            anyStageShown = true;
+            yield return new WaitForSeconds(stepSeconds);
+        }
     }
 
     private IEnumerator PlaySpecialPlacementRoutine(SpecialBlockInstance inst)

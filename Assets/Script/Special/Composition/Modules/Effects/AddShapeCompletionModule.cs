@@ -18,8 +18,18 @@ namespace Special.Composition.Modules.Effects
         {
             if (ctx is PowerCalculationContext power)
             {
-                power.ShapeCompletionAdd += Mathf.RoundToInt(condition.scalar) * perScalar;
+                int add = Mathf.RoundToInt(condition.scalar) * perScalar;
+                float before = power.ShapeCompletionRaw + power.ShapeCompletionAdd;
+                power.ShapeCompletionAdd += add;
+                power.Trace?.RecordAdd(CalcStage.ShapeCompletion, "모양 완성도", SourceName(owner), before, add);
             }
+        }
+
+        public override string BuildPreviewLine(SpecialBlockInstance owner, ConditionResult condition)
+        {
+            if (!condition.passed) return "모양 완성도 <color=#888888>효과 미발동</color>";
+            int add = Mathf.RoundToInt(condition.scalar) * perScalar;
+            return $"모양 완성도 <color=#FFE066>+{add}</color>";
         }
     }
 }

@@ -199,20 +199,47 @@ namespace Special.Composition
         public override EffectPreview BuildPreview(SpecialBlockInstance owner)
         {
             EffectPreview preview = base.BuildPreview(owner);
+
+            // 조건을 각자 평가해 통과/미통과/계수까지 실제 수치를 찍는다.
+            // 효과 쪽엔 AND 누적 결과(aggCond)를 넘겨 "모든 조건이 통과했을 때 실제 얼마나 증폭되는가" 를 보여준다.
+            ConditionResult aggCond = ConditionResult.Pass(1f);
             if (conditions != null)
             {
                 for (int i = 0; i < conditions.Count; i++)
                 {
-                    if (conditions[i] != null) preview.steps.Add($"· {conditions[i].name}");
+                    ConditionModule c = conditions[i];
+                    if (c == null) continue;
+                    ConditionResult r = c.Evaluate(owner, scope, rangeInCells);
+                    preview.steps.Add("· " + c.BuildPreviewLine(owner, r));
+
+                    if (!r.passed) aggCond.passed = false;
+                    else aggCond.scalar *= r.scalar;
+                    if (aggCond.targets == null && r.targets != null) aggCond.targets = r.targets;
                 }
             }
+
             if (effects != null)
             {
                 for (int i = 0; i < effects.Count; i++)
                 {
-                    if (effects[i] != null) preview.steps.Add($"→ {effects[i].name}");
+                    EffectModule e = effects[i];
+                    if (e == null) continue;
+                    preview.steps.Add("→ " + e.BuildPreviewLine(owner, aggCond));
                 }
             }
+
+            // impactCells: 조건이 지정한 targets 우선, 없으면 scope 기본 영역. 시퀀서가 해당 셀들을 플래시한다.
+            if (aggCond.targets != null && aggCond.targets.Count > 0)
+            {
+                preview.impactCells = new List<Vector2Int>(aggCond.targets);
+            }
+            else
+            {
+                preview.impactCells = preview.scopeCells != null
+                    ? new List<Vector2Int>(preview.scopeCells)
+                    : new List<Vector2Int>();
+            }
+
             return preview;
         }
     }

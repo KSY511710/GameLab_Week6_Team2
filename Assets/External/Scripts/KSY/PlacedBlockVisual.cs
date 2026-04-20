@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Prediction;
 using UnityEngine;
 
 [RequireComponent(typeof(BoxCollider2D), typeof(SpriteRenderer))]
@@ -161,6 +162,7 @@ public class PlacedBlockVisual : MonoBehaviour
         {
             foreach (var member in myGroupMembers) if (member != null) member.RevealOriginal();
         }
+        BroadcastHover();
     }
 
     private void OnMouseExit()
@@ -169,6 +171,16 @@ public class PlacedBlockVisual : MonoBehaviour
         {
             foreach (var member in myGroupMembers) if (member != null) member.HideToGroupColor();
         }
+        PlacementInteractionHub.BroadcastHoverChanged(null);
+    }
+
+    private void BroadcastHover()
+    {
+        GridManager grid = Object.FindFirstObjectByType<GridManager>();
+        if (grid == null || grid.groundTilemap == null) return;
+        Vector3Int worldCell = grid.groundTilemap.WorldToCell(transform.position);
+        Vector2Int arrayCell = grid.WorldCellToArrayIndex(worldCell);
+        PlacementInteractionHub.BroadcastHoverChanged(HoverTarget.FromArrayCell(arrayCell));
     }
 
     // ==========================================

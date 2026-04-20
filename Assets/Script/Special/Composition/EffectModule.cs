@@ -26,5 +26,24 @@ namespace Special.Composition
         /// 일반(Grouping) 효과는 0 반환이면 충분.
         /// </summary>
         public virtual float EstimateLivePower(SpecialBlockInstance owner, ConditionResult condition) => 0f;
+
+        /// <summary>
+        /// 시퀀서/정보 패널이 효과 한 줄을 표시할 때 호출. 기본은 에셋 이름만 돌려주지만,
+        /// 각 효과 모듈이 오버라이드해 "실제 수치" (예: +N, ×M.MM) 를 넣어주면 된다.
+        /// condition.passed == false 일 때도 호출될 수 있으므로 구현체는 그 경우 0 처리한다.
+        /// </summary>
+        public virtual string BuildPreviewLine(SpecialBlockInstance owner, ConditionResult condition)
+        {
+            return string.IsNullOrEmpty(name) ? GetType().Name : name;
+        }
+
+        /// <summary>Trace 기록용 소스 이름. owner/definition 가 null 안전.</summary>
+        protected static string SourceName(SpecialBlockInstance owner)
+        {
+            if (owner == null) return null;
+            var def = owner.definition;
+            if (def == null) return null;
+            return def.displayName;
+        }
     }
 }

@@ -22,5 +22,12 @@ namespace Special.Composition.Modules.Effects
                 ticket.BonusTickets += Mathf.RoundToInt(condition.scalar) * perScalar;
             }
         }
+
+        public override string BuildPreviewLine(SpecialBlockInstance owner, ConditionResult condition)
+        {
+            if (!condition.passed) return "보너스 티켓 <color=#888888>효과 미발동</color>";
+            int add = Mathf.RoundToInt(condition.scalar) * perScalar;
+            return $"보너스 티켓 <color=#FFE066>+{add}</color>";
+        }
     }
 }
