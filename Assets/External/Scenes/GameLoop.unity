@@ -16505,7 +16505,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 16dbc18295742bc44a5b28c19b5889e4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ResourceManager
-  dDay: 2
+  dDay: 5
   exchangeRatio: 10
   dailyProductionGoalCurve:
     serializedVersion: 2
@@ -16714,7 +16714,7 @@ MonoBehaviour:
   specialDrawCost: 1
   ticketsPerSkippedDay: 1
   startingElectricity: 0
-  startingMoney: 9999
+  startingMoney: 50
   startingTickets: 2
   electricityText: {fileID: 1556370298}
   moneyText: {fileID: 1125052723}
