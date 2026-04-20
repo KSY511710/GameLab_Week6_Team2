@@ -18,8 +18,8 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
     [Header("Shape Settings")]
     public Vector2Int[] shapeCoords = { new Vector2Int(0, 0) };
 
-    private Color validTint = new Color(0, 1, 0, 0.5f);
-    private Color invalidTint = new Color(1, 0, 0, 0.5f);
+    private Color validTint = new Color(1f, 1f, 1f, 0.5f);
+    private Color invalidTint = new Color(0.2f, 0.2f, 0.2f, 0.7f);
 
     private Vector3 startPos;
     private Vector2Int[] originalShape;
@@ -32,6 +32,8 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
     private GameObject previewGhost;
     private SpriteRenderer[] ghostRenderers;
     private Vector3Int lastCellPos;
+    [Header("Block Type Settings")]
+    public int placementCost = 10;
 
     void Start()
     {
@@ -75,6 +77,7 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
 
     void RotateShape()
     {
+        // 1. 논리적인 좌표 회전
         for (int i = 0; i < shapeCoords.Length; i++)
         {
             int x = shapeCoords[i].x;
@@ -82,11 +85,20 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
             shapeCoords[i] = new Vector2Int(y, -x);
         }
 
-        transform.Rotate(0, 0, -90);
+        // 2. 부모 오브젝트 회전
+        transform.Rotate(0, 0, -90); // 인벤토리 아이콘 회전
+
         if (previewGhost != null)
         {
-            previewGhost.transform.Rotate(0, 0, -90);
-            if (isDragging) UpdateGhostValidity(lastCellPos);
+            previewGhost.transform.Rotate(0, 0, -90); // 유령 전체 회전
+
+            // 🌟 [추가] 중앙 블록을 찾아서 회전값을 세계 좌표 기준으로 리셋!
+            Transform center = previewGhost.transform.Find("CenterPiece");
+            if (center != null)
+            {
+                // 부모가 어떻게 돌아가든 중앙 블록은 항상 0도를 유지합니다.
+                center.rotation = Quaternion.identity;
+            }
         }
     }
 
@@ -147,10 +159,24 @@ public class DraggableBlock : MonoBehaviour, IBeginDragHandler, IDragHandler, IE
 
         if (gridManager.CanPlaceShape(cellPos, shapeCoords))
         {
-            // 🌟 [수정됨] 진짜 블록을 깔 때도 프리팹 2개를 모두 전달합니다!
+            // 🌟 1. 돈 검사 및 지불 (특수 블록 눈치 볼 필요 없이 무조건 실행!)
+            if (!ResourceManager.Instance.TryPayForBasicDraw())
+            {
+                Debug.Log("돈이 부족해서 블록을 설치할 수 없습니다!");
+                ResetToOriginalState();
+                img.enabled = true;
+                return;
+            }
+
+            // 2. 블록 설치!
             gridManager.PlaceShape(cellPos, shapeCoords, (int)companyColor, (int)symbolType, centerBlockPrefab, sideBlockPrefab);
 
-            if (InventoryManager.Instance != null) InventoryManager.Instance.OnBlockUsed();
+            if (InventoryManager.Instance != null)
+            {
+                transform.SetParent(null); // 슬롯에서 빠져나오기
+
+                InventoryManager.Instance.ProcessGravityAndRefill();
+            }
 
             Destroy(gameObject);
         }

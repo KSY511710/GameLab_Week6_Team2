@@ -53,7 +53,7 @@ public enum KSM_ExpandResult
 ///   bounding rectangle(boardData / buildingObjects)는 유지한다.
 /// - 열린 구역 안의 셀만 실제 배치 가능하다.
 /// </summary>
-public class GridManager : MonoBehaviour
+public partial class GridManager : MonoBehaviour
 {
     [Header("Board Settings")]
     [Tooltip("초기 시작 구역 한 변 길이. 예: 5면 한 구역은 5 x 5 셀.")]
@@ -626,11 +626,10 @@ public class GridManager : MonoBehaviour
     /// <param name="specialDef">특수 블럭 정의. 일반 블럭은 null.</param>
     public void PlaceShape(Vector3Int startCell, Vector2Int[] shapeCoords, int colorID, int shapeID, GameObject centerPrefab, GameObject sidePrefab, SpecialBlockDefinition specialDef = null)
     {
-        if (PowerManager.Instance != null && PowerManager.Instance.IsAnimating)
-        {
-            return;
-        }
+        // 애니메이션 중에는 중복 설치 방지
+        if (PowerManager.Instance != null && PowerManager.Instance.IsAnimating) return;
 
+        // 블록들의 부모가 될 빈 오브젝트 생성
         GameObject buildingParent = new GameObject(specialDef != null ? $"Special_{specialDef.id}" : "MultiCell_Building");
         buildingParent.transform.position = groundTilemap.GetCellCenterWorld(startCell);
 
@@ -642,24 +641,40 @@ public class GridManager : MonoBehaviour
             int tx = startCell.x + offset.x;
             int ty = startCell.y + offset.y;
             Vector2Int arrayIdx = TileToArrayIndex(tx, ty);
-
             Vector3 cellWorldPos = groundTilemap.GetCellCenterWorld(new Vector3Int(tx, ty, 0));
 
-            // 🌟 1. 일단 무조건 모든 칸에 자투리(Side) 바닥을 깝니다!
+            // 🌟 Y축 기준 레이어 정렬 로직 (아래로 갈수록 숫자가 커짐)
+            // 공식: $$sortingBase = \text{Mathf.RoundToInt}(-cellWorldPos.y \times 100)$$
+            int sortingBase = Mathf.RoundToInt(-cellWorldPos.y * 100);
+
+            // 1. 바닥(Side) 블록 생성
             GameObject baseCell = Instantiate(sidePrefab, cellWorldPos, Quaternion.identity);
             baseCell.transform.SetParent(buildingParent.transform);
 
-            // 🌟 2. 마우스가 있는 중심(0,0) 칸이라면, 그 위에 중앙(Center) 프리팹을 추가로 띄웁니다!
-            if (offset == Vector2Int.zero)
+            // 바닥 레이어 설정
+            SpriteRenderer sideSR = baseCell.GetComponent<SpriteRenderer>();
+            if (sideSR != null)
             {
-                GameObject centerOverlay = Instantiate(centerPrefab, cellWorldPos, Quaternion.identity);
-                centerOverlay.transform.SetParent(buildingParent.transform);
-
-                // (안전장치) 바닥이랑 겹쳐서 깜빡거리지 않게 Z축을 살짝 앞(-0.1)으로 당겨줍니다.
-                Vector3 localPos = centerOverlay.transform.localPosition;
-                centerOverlay.transform.localPosition = new Vector3(localPos.x, localPos.y, -0.1f);
+                sideSR.sortingOrder = sortingBase;
             }
 
+            // 2. 중앙(Center) 블록 생성 (모양의 중심점인 0,0 좌표에만 생성)
+            if (offset == Vector2Int.zero)
+            {
+                // 중앙 프리팹이 바닥보다 살짝 앞에 보이도록 Z축 및 레이어 보정
+                Vector3 overlayPos = new Vector3(cellWorldPos.x, cellWorldPos.y, -0.1f);
+                GameObject centerOverlay = Instantiate(centerPrefab, overlayPos, Quaternion.identity);
+                centerOverlay.transform.SetParent(buildingParent.transform);
+
+                // 중앙 아이콘은 바닥보다 무조건 앞에 오도록 +1 설정
+                SpriteRenderer centerSR = centerOverlay.GetComponentInChildren<SpriteRenderer>();
+                if (centerSR != null)
+                {
+                    centerSR.sortingOrder = sortingBase + 1;
+                }
+            }
+
+            // 데이터 기록
             boardData[arrayIdx.x, arrayIdx.y] = new BlockData
             {
                 attribute = specialDef != null
@@ -667,32 +682,21 @@ public class GridManager : MonoBehaviour
                     : new BlockAttribute(colorID, shapeID),
                 isGrouped = false,
                 groupID = 0,
-                blockObject = baseCell // 데이터상으로는 바닥(baseCell)을 연결해 둡니다.
+                blockObject = baseCell
             };
 
             buildingObjects[arrayIdx.x, arrayIdx.y] = buildingParent;
             footprint?.Add(arrayIdx);
         }
 
-        // 특수 블럭 등록 등 나머지 로직은 그대로 유지!
+        // 특수 블록 등록 로직 (있는 경우)
         if (specialDef != null)
         {
             int zoneId = ZoneServiceLocator.Current.GetZoneIdFromCell(anchorArray);
             SpecialBlockRegistry.Instance.RegisterPlacement(specialDef, anchorArray, footprint, zoneId);
         }
 
-        // 색상 오버라이드 훅 (효과 h/i). 등록된 콜백이 OverrideColorId 와 TargetCells 를 채우면 해당 셀 색을 강제 변경.
-        // 훅이 없으면 기존 동작과 동일.
-        var colorCtx = new ColorOverrideContext { TargetCells = new List<Vector2Int>() };
-        EffectRuntime.Instance.ApplyColorOverrideHooks(colorCtx);
-        if (colorCtx.OverrideColorId > 0 && colorCtx.TargetCells != null)
-        {
-            for (int i = 0; i < colorCtx.TargetCells.Count; i++)
-            {
-                ApplyColorOverrideToCell(colorCtx.TargetCells[i], colorCtx.OverrideColorId);
-            }
-        }
-
+        // 🌟 설치 직후 그룹 체크 및 외곽선 업데이트 (여기서 그룹 테두리가 그려집니다)
         if (PowerManager.Instance != null)
         {
             PowerManager.Instance.CheckAndFormGroups(boardData, width, height);
@@ -842,14 +846,15 @@ public class GridManager : MonoBehaviour
 
     /// <summary>
     /// 특정 sourceRegion의 특정 방향 포트를 프리뷰한다.
-    /// 
+    ///
     /// 프리뷰는 "새로 열릴 targetRegion 1개"를 보여준다.
     /// 즉 예전처럼 전체 strip가 아니라,
     /// 실제 확장될 구역 하나만 보여준다.
-    /// 
+    ///
     /// 추가 수정 포인트:
     /// - 같은 targetRegion을 이미 프리뷰 중이면 다시 그리지 않는다.
     /// - hover 프리뷰 시 카메라 이동 여부는 옵션으로 분리한다.
+    /// - 돈이 부족해도 구조적으로 확장 가능한 땅이면 프리뷰는 보여준다.
     /// </summary>
     /// <param name="sourceRegion">기준 구역</param>
     /// <param name="direction">방향</param>
@@ -860,7 +865,12 @@ public class GridManager : MonoBehaviour
             return;
         }
 
-        if (!CanExpandFromRegion(sourceRegion, direction))
+        // 여기서 중요한 점:
+        // Hover 프리뷰는 "실제 구매 가능 여부"가 아니라
+        // "구조적으로 확장 가능한 타겟 구역이 존재하는지"를 기준으로 보여준다.
+        // 그래야 돈이 부족한 상태에서도 유저가 어떤 땅을 구매할 수 있는지
+        // 미리 확인할 수 있고, UI가 죽어 보이지 않는다.
+        if (!HasStructuralExpansionPort(sourceRegion, direction))
         {
             ClearExpansionPreview(moveCameraOnHoverPreview);
             return;
@@ -930,9 +940,6 @@ public class GridManager : MonoBehaviour
 
         RefreshTilesAroundRect(previewRect);
 
-        // 프리뷰는 유지하되, hover 중 카메라가 움직이면
-        // 포인터 판정과 버튼 재배치가 겹쳐 깜빡임이 생길 수 있으므로
-        // 기본값은 false 권장.
         if (moveCameraOnHoverPreview)
         {
             UpdatePreviewCameraTarget(previewRect, false);
@@ -1047,7 +1054,11 @@ public class GridManager : MonoBehaviour
         FillWorldRectWithBaseTile(targetRect);
         RefreshTilesAroundRect(targetRect);
 
-        UpdateCameraTarget(false);
+        // 확장 직후 GridManager가 카메라를 다시 맞추면,
+        // 유저가 KSM_CameraController로 줌/팬하는 입력과 충돌해서
+        // 카메라가 원래 위치/배율로 복귀하려는 문제가 생긴다.
+        // 따라서 확장 후 자동 카메라 보정은 하지 않는다.
+        // UpdateCameraTarget(false);
 
         if (PowerManager.Instance != null)
         {
@@ -1341,31 +1352,30 @@ public class GridManager : MonoBehaviour
         {
             Vector3 localPos = groundTilemap.layoutGrid.CellToLocal((Vector3Int)offset);
 
-            // 🌟 1. 모든 칸에 자투리(Side) 유령 생성
+            // 1. 바닥(Side) 유령 생성
             GameObject baseGhost = Instantiate(sidePrefab, localPos, Quaternion.identity);
             baseGhost.transform.SetParent(parent.transform, false);
 
-            SpriteRenderer sr = baseGhost.GetComponent<SpriteRenderer>();
-            if (sr != null)
+            // 모든 자식(이미지)에 틴트값과 높은 레이어 순서 적용
+            SpriteRenderer[] baseSrs = baseGhost.GetComponentsInChildren<SpriteRenderer>(true);
+            foreach (var sr in baseSrs)
             {
                 sr.color = tint;
-                sr.sortingOrder = 10;
+                sr.sortingOrder = 5000; // 유령은 지형보다 항상 위에 보이게 설정
             }
 
-            // 🌟 2. 중심(0,0) 칸에 중앙(Center) 유령 추가 생성
+            // 2. 중앙(Center) 유령 생성
             if (offset == Vector2Int.zero)
             {
-                // Z축을 살짝 당겨서 생성합니다 (-0.1f)
                 Vector3 overlayPos = new Vector3(localPos.x, localPos.y, -0.1f);
                 GameObject centerGhost = Instantiate(centerPrefab, overlayPos, Quaternion.identity);
                 centerGhost.transform.SetParent(parent.transform, false);
 
-                SpriteRenderer centerSr = centerGhost.GetComponent<SpriteRenderer>();
+                SpriteRenderer centerSr = centerGhost.GetComponentInChildren<SpriteRenderer>();
                 if (centerSr != null)
                 {
                     centerSr.color = tint;
-                    // 🌟 바닥 유령(10)보다 레이어를 높게(11) 설정해서 완벽하게 위에 보이게 합니다.
-                    centerSr.sortingOrder = 11;
+                    centerSr.sortingOrder = 5001; // 중앙 아이콘은 유령 바닥보다 +1
                 }
             }
         }
@@ -1403,5 +1413,13 @@ public class GridManager : MonoBehaviour
         }
 
         return quotient;
+    }
+    private bool HasNeighborInShape(Vector2Int[] shapeCoords, Vector2Int target)
+    {
+        foreach (Vector2Int coord in shapeCoords)
+        {
+            if (coord == target) return true;
+        }
+        return false;
     }
 }

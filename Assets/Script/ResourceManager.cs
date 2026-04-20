@@ -3,9 +3,10 @@ using System.Collections.Generic;
 using Special.Composition.Contexts;
 using Special.Runtime;
 using TMPro;
+using UnityEditor.Build;
 using UnityEngine;
 using UnityEngine.Serialization;
-
+using UnityEngine.UI;
 public enum CurrencyType
 {
     Electricity,
@@ -90,6 +91,12 @@ public class ResourceManager : MonoBehaviour
     public TextMeshProUGUI sessionGoalText;
     public TextMeshProUGUI exchangeCapText;
     public TextMeshProUGUI expandCostText;
+
+    [Header("리롤 비용 설정")]
+    [SerializeField] private int baseRerollCost;
+    public TextMeshProUGUI RerollCostText;
+    [Header("발전량 게이지 UI")]
+    public Image powerGaugeFill;
 
     // ==========================================================
     //   Runtime State
@@ -183,6 +190,7 @@ public class ResourceManager : MonoBehaviour
     private void HandleTotalPowerChanged()
     {
         RaiseSkipAvailabilityIfChanged();
+        UpdateUI();
     }
 
     private void Start()
@@ -193,6 +201,8 @@ public class ResourceManager : MonoBehaviour
         RaiseDayEvent();
         RaiseSkipAvailabilityIfChanged();
         OnDrawCostChanged?.Invoke();
+        GetRerollCost();
+        UpdateRerollCost();
     }
 
     private void ClampCurveWrapModes()
@@ -309,6 +319,11 @@ public class ResourceManager : MonoBehaviour
         if (currentDDay <= 0)
         {
             CheckDailyGoalOrGameOver();
+        }
+
+        if (InventoryManager.Instance != null)
+        {
+            InventoryManager.Instance.RefreshShopFree();
         }
 
         UpdateUI();
@@ -521,7 +536,20 @@ public class ResourceManager : MonoBehaviour
         OnDrawCostChanged?.Invoke();
         return true;
     }
+    public int GetRerollCost() {
+        int DrawCost = GetBasicDrawCost();
+        baseRerollCost= DrawCost*3;
+        return baseRerollCost; 
+    }
 
+    public bool TryPayForReroll()
+    {
+        int cost = GetRerollCost();
+        if (!SpendMoney(cost)) return false;
+
+        UpdateRerollCost();
+        return true;
+    }
     // ==========================================================
     //   UI / Events
     // ==========================================================
@@ -532,10 +560,10 @@ public class ResourceManager : MonoBehaviour
             electricityText.text = $"Electricity: {GetCurrency(CurrencyType.Electricity)} GWh";
 
         if (moneyText != null)
-            moneyText.text = $"Money: ${GetCurrency(CurrencyType.Money)}";
+            moneyText.text = $"{GetCurrency(CurrencyType.Money)}";
 
         if (ticketText != null)
-            ticketText.text = $"Tickets: {GetCurrency(CurrencyType.Ticket)}";
+            ticketText.text = $"{GetCurrency(CurrencyType.Ticket)}";
 
         if (dayText != null)
             dayText.text = $"Day {totalDay} · D-{currentDDay}";
@@ -548,6 +576,23 @@ public class ResourceManager : MonoBehaviour
 
         if (expandCostText != null)
             expandCostText.text = $"Expand: ${GetExpandCost()}";
+        if (powerGaugeFill != null && dailyProductionGoal > 0)
+        {
+            int livePower = PowerManager.Instance != null ? PowerManager.Instance.GetTotalPower() : 0;
+
+            float fillRatio = (float)livePower / dailyProductionGoal;
+
+            powerGaugeFill.fillAmount = Mathf.Clamp01(fillRatio);
+
+            if (fillRatio >= 1f)
+            {
+                powerGaugeFill.color = Color.green;
+            }
+            else
+            {
+                powerGaugeFill.color = Color.yellow;
+            }
+        }
     }
 
     private void EmitAllCurrencyEvents()
@@ -576,5 +621,9 @@ public class ResourceManager : MonoBehaviour
     {
         if (curve == null) return 0;
         return Mathf.RoundToInt(curve.Evaluate(x));
+    }
+    private void UpdateRerollCost()
+    {
+        RerollCostText.text = $"{baseRerollCost}";
     }
 }
