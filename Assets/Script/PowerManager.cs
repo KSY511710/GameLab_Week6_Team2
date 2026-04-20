@@ -380,8 +380,7 @@ public class PowerManager : MonoBehaviour
     {
         if (powerText == null) return;
         powerText.text =
-            $"<color=#00FFFF><size=30><b>Live Power: {totalPower} GWh</b></size></color>\n" +
-            $"<size=20>(Completed Groups: {activeGroups.Count})</size>";
+            $"{totalPower}";
     }
 
     public int GetTotalPower()

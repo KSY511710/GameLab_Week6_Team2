@@ -38,7 +38,11 @@ public class SkipButtonController : MonoBehaviour
 
     private void SetInteractable(bool value)
     {
-        if (skipButton != null) skipButton.interactable = value;
+        if (skipButton != null)
+        {
+            skipButton.interactable = value;
+            skipButton.GetComponent<Image>().enabled = value;
+        }
     }
 
     private void OnSkipClicked()
