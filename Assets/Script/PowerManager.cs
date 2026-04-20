@@ -148,6 +148,7 @@ public class PowerManager : MonoBehaviour
     public void CheckAndFormGroups(BlockData[,] board, int width, int height)
     {
         bool[,] visited = new bool[width, height];
+        bool isAnyGroupCreated = false; // 🌟 이번 체크에서 그룹이 생겼는지 확인하는 플래그
 
         for (int x = 0; x < width; x++)
         {
@@ -159,35 +160,31 @@ public class PowerManager : MonoBehaviour
                 {
                     List<Vector2Int> cluster = GetUnlockedCluster(x, y, board, visited, width, height);
 
-                    // 1. 먼저 10칸 이상 모였는지 확인
                     if (cluster.Count >= groupMinSize)
                     {
-                        // 🌟 '부품의 종류'를 세기 위해 HashSet(중복 방지 주머니)을 만듭니다.
                         HashSet<int> uniqueParts = new HashSet<int>();
-
                         foreach (Vector2Int pos in cluster)
                         {
-                            BlockData blockInCluster = board[pos.x, pos.y];
-
-                            if (blockInCluster.attribute.shapeID > 0)
-                            {
-                                // HashSet은 똑같은 부품(shapeID)이 여러 번 들어와도 알아서 1개로 칩니다!
-                                uniqueParts.Add(blockInCluster.attribute.shapeID);
-                            }
+                            if (board[pos.x, pos.y].attribute.shapeID > 0)
+                                uniqueParts.Add(board[pos.x, pos.y].attribute.shapeID);
                         }
 
-                        // 3. 서로 다른 종류의 부품이 3종류 이상 포함되어 있을 때만 그룹 확정(Lock)!
                         if (uniqueParts.Count >= groupMinpart)
                         {
                             CreateNewGroup(cluster, board);
+                            isAnyGroupCreated = true; // 🌟 그룹이 생성됨을 기록!
                         }
                     }
                 }
             }
         }
 
-        // BFS 와 독립적으로, PowerPlant role 블럭은 자기 footprint 로만 이루어진 솔로 그룹을 형성한다.
-        // 이 단계에서 isGrouped=true 를 세팅하므로 이후 설치 인접 금지/ScopeEvaluator 판정이 일관된다.
+        // 🌟 그룹이 하나라도 생겼다면, 그때만 보드 전체의 아웃라인을 업데이트합니다.
+        if (isAnyGroupCreated)
+        {
+            UpdateAllOutlines(board, width, height);
+        }
+
         FormPowerPlantSoloGroups(board);
     }
 
@@ -693,41 +690,41 @@ public class PowerManager : MonoBehaviour
             for (int y = 0; y < height; y++)
             {
                 BlockData myData = board[x, y];
-
-                // 블록이 없거나 연결된 실제 오브젝트가 없으면 패스!
                 if (myData == null || myData.blockObject == null) continue;
 
-                // 🌟 그룹이 아닌 개별 블록은 GridManager가 예쁘게 만든 선을 건드리지 않고 패스!
-                if (!myData.isGrouped) continue;
+                bool showTop, showBottom, showLeft, showRight;
 
-                int myGroupID = myData.groupID;
-
-                // 4방향 이웃 검사! (나랑 그룹ID가 다르면 외곽선 켬, 같으면 끔)
-                bool showTop = (y + 1 >= height) || (board[x, y + 1] == null) || (board[x, y + 1].groupID != myGroupID);
-                bool showBottom = (y - 1 < 0) || (board[x, y - 1] == null) || (board[x, y - 1].groupID != myGroupID);
-                bool showLeft = (x - 1 < 0) || (board[x - 1, y] == null) || (board[x - 1, y].groupID != myGroupID);
-                bool showRight = (x + 1 >= width) || (board[x + 1, y] == null) || (board[x + 1, y].groupID != myGroupID);
-
-                // 1. 만약 PlacedBlockVisual 스크립트가 있다면 그걸 통해 끕니다. (기존 로직 유지)
-                PlacedBlockVisual visual = myData.blockObject.GetComponent<PlacedBlockVisual>();
-                if (visual != null)
+                // 🌟 그룹인 경우에만 이웃을 체크해서 선을 끕니다.
+                if (myData.isGrouped)
                 {
-                    visual.UpdateOutline(showTop, showBottom, showLeft, showRight);
+                    int myGroupID = myData.groupID;
+                    showTop = (y + 1 >= height) || (board[x, y + 1] == null) || (board[x, y + 1].groupID != myGroupID);
+                    showBottom = (y - 1 < 0) || (board[x, y - 1] == null) || (board[x, y - 1].groupID != myGroupID);
+                    showLeft = (x - 1 < 0) || (board[x - 1, y] == null) || (board[x - 1, y].groupID != myGroupID);
+                    showRight = (x + 1 >= width) || (board[x + 1, y] == null) || (board[x + 1, y].groupID != myGroupID);
+                }
+                else
+                {
+                    // 🌟 그룹이 아니면 무조건 4방향 선을 다 켭니다!
+                    showTop = showBottom = showLeft = showRight = false;
                 }
 
-                // 🌟 2. [가장 확실한 필살기] 스크립트가 없더라도 강제로 Line_U, D, L, R을 찾아서 켜고 끕니다!
-                Transform lineU = myData.blockObject.transform.Find("Line_U");
-                Transform lineD = myData.blockObject.transform.Find("Line_D");
-                Transform lineL = myData.blockObject.transform.Find("Line_L");
-                Transform lineR = myData.blockObject.transform.Find("Line_R");
-
-                // 그룹 안쪽(맞닿은 곳)이면 꺼지고, 바깥쪽이면 켜집니다!
-                if (lineU != null) lineU.gameObject.SetActive(showTop);
-                if (lineD != null) lineD.gameObject.SetActive(showBottom);
-                if (lineL != null) lineL.gameObject.SetActive(showLeft);
-                if (lineR != null) lineR.gameObject.SetActive(showRight);
+                // 시각적 업데이트 (Line_U, D, L, R 오브젝트 제어)
+                UpdateLineObjects(myData.blockObject, showTop, showBottom, showLeft, showRight);
             }
         }
+    }
+    private void UpdateLineObjects(GameObject obj, bool t, bool b, bool l, bool r)
+    {
+        Transform u = obj.transform.Find("Line_U");
+        Transform d = obj.transform.Find("Line_D");
+        Transform ll = obj.transform.Find("Line_L");
+        Transform rr = obj.transform.Find("Line_R");
+
+        if (u != null) u.gameObject.SetActive(t);
+        if (d != null) d.gameObject.SetActive(b);
+        if (ll != null) ll.gameObject.SetActive(l);
+        if (rr != null) rr.gameObject.SetActive(r);
     }
     public void ProceedToNextDay()
     {

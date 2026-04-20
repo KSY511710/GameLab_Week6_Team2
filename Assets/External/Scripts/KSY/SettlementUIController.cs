@@ -1,47 +1,53 @@
+using System;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using System;
 
-// 📊 정산 화면에 전달할 데이터 바구니
+// 📊 1. 정산 데이터 바구니 (반드시 파일 맨 위에 있어야 에러가 안 납니다!)
 public class SettlementData
 {
     public float redPower, bluePower, greenPower;
     public float redMoney, blueMoney, greenMoney;
-
-    // 🌟 자투리(그룹 미소속) 데이터 추가
     public float scrapPower;
     public float scrapMoney;
-
     public float totalMoneyCap;
 }
 
+// 🎮 2. 정산 UI 컨트롤러 메인 클래스
 public class SettlementUIController : MonoBehaviour
 {
     public static SettlementUIController Instance;
 
-    [Header("UI 패널")]
-    public GameObject settlementPanel;
+    [Header("🌟 1. 애니메이션 UI (프린터 컨테이너 & 배경)")]
+    public CanvasGroup dimPanel;           // 검은 반투명 배경
+    public GameObject settlementPanel;     // 정산 UI 전체 부모
+    public RectTransform printerRect;      // 프린터 컨테이너 (부품들을 묶은 투명 상자)
+    public RectTransform paperRect;        // 영수증 종이
 
-    [Header("전력 막대그래프 (Image - Fill Amount)")]
-    public Image redPowerBar;
-    public Image bluePowerBar;
-    public Image greenPowerBar;
-    public Image scrapPowerBar; // 🌟 자투리용 막대그래프 추가 (회색 추천)
+    [Header("🌟 2. 애니메이션 좌표 & 속도")]
+    public Vector2 printerStartPos;        // 대기 (오른쪽 밖)
+    public Vector2 printerCenterPos;       // 출력 (중앙)
+    public Vector2 printerExitPos;         // 퇴장 (왼쪽 밖)
+    public Vector2 paperHiddenPos;         // 종이 숨김 (프린터 안)
+    public Vector2 paperPrintedPos;        // 종이 나옴 (프린터 밖)
+    public float moveSpeed = 0.5f;
 
-    [Header("돈 막대그래프 (Image - Fill Amount)")]
-    public Image moneyBar;
+    [Header("📊 3. 전력 막대그래프 (RectTransform - Width 조절)")]
+    public RectTransform redPowerBar;
+    public RectTransform bluePowerBar;
+    public RectTransform greenPowerBar;
+    public RectTransform scrapPowerBar;
+    public float maxGaugeWidth = 400f;     // 🌟 게이지가 100%일 때의 최대 가로 길이
 
-    [Header("텍스트 정보")]
+    [Header("📝 4. 텍스트 정보 (돈 게이지 삭제됨)")]
     public TextMeshProUGUI redText;
     public TextMeshProUGUI blueText;
     public TextMeshProUGUI greenText;
-    public TextMeshProUGUI scrapText; // 🌟 자투리 텍스트 추가
-    public TextMeshProUGUI moneyText;
+    public TextMeshProUGUI scrapText;
+    public TextMeshProUGUI moneyText;      // 총 정산 금액 텍스트
 
-    [Header("연출 속도")]
+    [Header("정산 속도")]
     public float fillSpeed = 1.5f;
 
     private float sharedMoneyTracker = 0f;
@@ -49,87 +55,141 @@ public class SettlementUIController : MonoBehaviour
     private void Awake()
     {
         if (Instance == null) Instance = this;
+
+        if (dimPanel != null) dimPanel.alpha = 0f;
+        if (settlementPanel != null) settlementPanel.SetActive(false);
     }
 
     public void PlaySettlementAnimation(SettlementData data, Action onAnimationComplete)
     {
+        if (settlementPanel == null) return;
         settlementPanel.SetActive(true);
-        StartCoroutine(AnimateSettlementRoutine(data, onAnimationComplete));
+        StartCoroutine(AnimateSettlementSequence(data, onAnimationComplete));
     }
 
-    private IEnumerator AnimateSettlementRoutine(SettlementData data, Action onAnimationComplete)
+    private IEnumerator AnimateSettlementSequence(SettlementData data, Action onAnimationComplete)
     {
-        // 1. 초기 상태 세팅 (자투리 전력도 최댓값 계산에 포함)
+        // ==========================================
+        // 1단계: 초기 데이터 및 UI 크기 셋팅
+        // ==========================================
         float maxPower = Mathf.Max(data.redPower, data.bluePower, data.greenPower, data.scrapPower, 1f);
-
         sharedMoneyTracker = 0f;
 
-        redPowerBar.fillAmount = data.redPower / maxPower;
-        bluePowerBar.fillAmount = data.bluePower / maxPower;
-        greenPowerBar.fillAmount = data.greenPower / maxPower;
-        scrapPowerBar.fillAmount = data.scrapPower / maxPower; // 🌟 자투리 세팅
-        moneyBar.fillAmount = 0f;
+        SetBarWidth(redPowerBar, data.redPower / maxPower);
+        SetBarWidth(bluePowerBar, data.bluePower / maxPower);
+        SetBarWidth(greenPowerBar, data.greenPower / maxPower);
+        SetBarWidth(scrapPowerBar, data.scrapPower / maxPower);
 
         redText.text = $"{data.redPower:F0} GWh";
         blueText.text = $"{data.bluePower:F0} GWh";
         greenText.text = $"{data.greenPower:F0} GWh";
-        scrapText.text = $"{data.scrapPower:F0} GWh"; // 🌟 자투리 세팅
-        moneyText.text = "$0";
+        scrapText.text = $"{data.scrapPower:F0} GWh";
+        moneyText.text = "총정산: $0";
 
-        yield return new WaitForSeconds(0.5f);
+        printerRect.anchoredPosition = printerStartPos;
+        paperRect.anchoredPosition = paperHiddenPos;
 
-        // 2. 각 색상별 전력 정산
-        yield return StartCoroutine(DrainPowerAndFillMoney(redPowerBar, redText, data.redPower, data.redMoney, data.totalMoneyCap));
-        yield return StartCoroutine(DrainPowerAndFillMoney(bluePowerBar, blueText, data.bluePower, data.blueMoney, data.totalMoneyCap));
-        yield return StartCoroutine(DrainPowerAndFillMoney(greenPowerBar, greenText, data.greenPower, data.greenMoney, data.totalMoneyCap));
+        // ==========================================
+        // 2단계: 등장 애니메이션 (배경 -> 프린터 -> 영수증)
+        // ==========================================
+        yield return StartCoroutine(LerpAlpha(dimPanel, 0f, 1f, 0.3f));
+        yield return StartCoroutine(LerpPosition(printerRect, printerStartPos, printerCenterPos, moveSpeed));
+        yield return StartCoroutine(LerpPosition(paperRect, paperHiddenPos, paperPrintedPos, moveSpeed));
 
-        // 🌟 3. 마지막으로 자투리 전력 정산!
-        yield return StartCoroutine(DrainPowerAndFillMoney(scrapPowerBar, scrapText, data.scrapPower, data.scrapMoney, data.totalMoneyCap));
+        yield return new WaitForSeconds(0.3f);
 
-        // 연출 끝!
-        yield return new WaitForSeconds(1.5f);
+        // ==========================================
+        // 3단계: 정산 애니메이션 (Width 줄어들고 돈 올라감)
+        // ==========================================
+        yield return StartCoroutine(DrainPowerAndFillMoney(redPowerBar, redText, data.redPower, data.redMoney));
+        yield return StartCoroutine(DrainPowerAndFillMoney(bluePowerBar, blueText, data.bluePower, data.blueMoney));
+        yield return StartCoroutine(DrainPowerAndFillMoney(greenPowerBar, greenText, data.greenPower, data.greenMoney));
+        yield return StartCoroutine(DrainPowerAndFillMoney(scrapPowerBar, scrapText, data.scrapPower, data.scrapMoney));
+
+        yield return new WaitForSeconds(2.0f);
+
+        // ==========================================
+        // 4단계: 퇴장 애니메이션 (영수증 -> 프린터 -> 배경)
+        // ==========================================
+        yield return StartCoroutine(LerpPosition(paperRect, paperPrintedPos, paperHiddenPos, moveSpeed));
+        yield return StartCoroutine(LerpPosition(printerRect, printerCenterPos, printerExitPos, moveSpeed));
+        yield return StartCoroutine(LerpAlpha(dimPanel, 1f, 0f, 0.3f));
+
         settlementPanel.SetActive(false);
-
         onAnimationComplete?.Invoke();
     }
 
-    private IEnumerator DrainPowerAndFillMoney(Image powerBar, TextMeshProUGUI powerText, float startPower, float earnedMoney, float maxMoneyCap)
+    // 🌟 헬퍼 함수: 막대그래프 너비 설정
+    private void SetBarWidth(RectTransform bar, float ratio)
     {
-        if (startPower <= 0) yield break; // 이 색상의 전력이 없으면 그냥 스킵!
+        if (bar != null)
+        {
+            bar.sizeDelta = new Vector2(maxGaugeWidth * ratio, bar.sizeDelta.y);
+        }
+    }
+
+    // 🌟 핵심 로직: 전력 바 줄어들고 돈 텍스트 올라가는 애니메이션
+    private IEnumerator DrainPowerAndFillMoney(RectTransform powerBar, TextMeshProUGUI powerText, float startPower, float earnedMoney)
+    {
+        if (startPower <= 0 || powerBar == null) yield break;
 
         float t = 0;
         float startMoney = sharedMoneyTracker;
         float targetMoney = sharedMoneyTracker + earnedMoney;
-
-        // 🌟 [핵심 변경점] 애니메이션을 시작하기 전, 현재 막대그래프의 높이(비율)를 기억해둡니다!
-        float startFillAmount = powerBar.fillAmount;
+        float startWidth = powerBar.sizeDelta.x; // 현재 너비 기억
 
         while (t < 1f)
         {
             t += Time.deltaTime * fillSpeed;
 
-            // 1. 전력 텍스트는 숫자 그대로 부드럽게 줄어들고
-            float currentPower = Mathf.Lerp(startPower, 0f, t);
-            powerText.text = $"{currentPower:F0} GWh";
+            // 1. 전력 숫자 줄어듦
+            powerText.text = $"{Mathf.Lerp(startPower, 0f, t):F0} GWh";
 
-            // 🌟 2. 전력 막대그래프는 '기억해둔 원래 높이'에서 0으로 부드럽게 줄어듭니다! (100% 튀는 현상 해결)
-            powerBar.fillAmount = Mathf.Lerp(startFillAmount, 0f, t);
+            // 2. 게이지 바 길이(Width) 줄어듦
+            powerBar.sizeDelta = new Vector2(Mathf.Lerp(startWidth, 0f, t), powerBar.sizeDelta.y);
 
-            // 3. 돈 바는 차오름 (공유 변수에 현재 금액을 기록)
+            // 3. 돈 숫자 올라감 (N0로 천 단위 콤마 찍기)
             sharedMoneyTracker = Mathf.Lerp(startMoney, targetMoney, t);
-            moneyBar.fillAmount = sharedMoneyTracker / maxMoneyCap;
-            moneyText.text = $"${sharedMoneyTracker:F0}";
+            moneyText.text = $"총정산: ${sharedMoneyTracker:N0}";
 
             yield return null;
         }
 
-        // 혹시 모를 소수점 오차 보정
-        sharedMoneyTracker = targetMoney;
-        powerBar.fillAmount = 0f;
+        // 최종 수치 고정
+        powerBar.sizeDelta = new Vector2(0f, powerBar.sizeDelta.y);
         powerText.text = "0 GWh";
-        moneyBar.fillAmount = sharedMoneyTracker / maxMoneyCap;
-        moneyText.text = $"${sharedMoneyTracker:F0}";
+        sharedMoneyTracker = targetMoney;
+        moneyText.text = $"총정산: ${sharedMoneyTracker:N0}";
 
-        yield return new WaitForSeconds(0.3f); // 다음 색상으로 넘어가기 전 짧은 대기
+        yield return new WaitForSeconds(0.3f);
+    }
+
+    // 🌟 헬퍼 함수: 부드러운 위치 이동
+    private IEnumerator LerpPosition(RectTransform rect, Vector2 start, Vector2 end, float duration)
+    {
+        if (rect == null) yield break;
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Sin(elapsed / duration * Mathf.PI * 0.5f); // Ease-Out 효과
+            rect.anchoredPosition = Vector2.Lerp(start, end, t);
+            yield return null;
+        }
+        rect.anchoredPosition = end;
+    }
+
+    // 🌟 헬퍼 함수: 부드러운 투명도 변경
+    private IEnumerator LerpAlpha(CanvasGroup cg, float start, float end, float duration)
+    {
+        if (cg == null) yield break;
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            cg.alpha = Mathf.Lerp(start, end, elapsed / duration);
+            yield return null;
+        }
+        cg.alpha = end;
     }
 }
