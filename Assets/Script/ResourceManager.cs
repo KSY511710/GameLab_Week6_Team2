@@ -350,18 +350,29 @@ public class ResourceManager : MonoBehaviour
 
         int skippedDays = currentDDay;
 
-        // 특수 블럭 스킵 정산 훅 (효과 j) — 등록된 콜백이 BonusTicketsPerDay 를 수정 가능
+        // 1. 티켓 보너스 정산 (원래 로직 유지)
         var skipCtx = new SkipSettleContext { SkippedDays = skippedDays, BonusTicketsPerDay = ticketsPerSkippedDay };
         EffectRuntime.Instance.ApplySkipHooks(skipCtx);
 
         int reward = skipCtx.BonusTicketsPerDay * skippedDays;
         AddCurrency(CurrencyType.Ticket, reward);
         skippedDaysTotal += skippedDays;
-        Debug.Log($"<color=cyan>스킵 성공!</color> 남은 {skippedDays}일 분 티켓 {reward}개 보상.");
 
-        AdvanceToNextSession();
-        UpdateUI();
-        RaiseSkipAvailabilityIfChanged();
+        // 🌟 2. 날짜 조작 마법
+        // 남은 날짜만큼 전체 달력(totalDay)을 미리 더해주고,
+        // 이번 세션의 D-Day를 1로 맞춰서 '오늘 정산하면 세션 종료'가 되게 만듭니다.
+        totalDay += (skippedDays - 1);
+        currentDDay = 1;
+
+        Debug.Log($"<color=cyan>스킵 시작!</color> Day {totalDay + 1}로 정산 후 이동합니다.");
+
+        // 🌟 3. 원래 있던 '하루 넘기기' 정산 프로세스를 실행!
+        // 이렇게 하면 정산 애니메이션 -> 돈/전력 계산 -> 상점 갱신이 세트로 실행됩니다.
+        if (PowerManager.Instance != null)
+        {
+            PowerManager.Instance.ProceedToNextDay();
+        }
+
         return true;
     }
 
@@ -566,7 +577,7 @@ public class ResourceManager : MonoBehaviour
             ticketText.text = $"{GetCurrency(CurrencyType.Ticket)}";
 
         if (dayText != null)
-            dayText.text = $"Day {totalDay} · D-{currentDDay}";
+            dayText.text = $"D-{currentDDay}";
 
         if (sessionGoalText != null)
             sessionGoalText.text = $"Session {sessionIndex + 1}: \n {dailyProductionGoal} GWh/day";

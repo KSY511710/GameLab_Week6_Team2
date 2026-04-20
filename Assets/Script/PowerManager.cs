@@ -752,9 +752,7 @@ public class PowerManager : MonoBehaviour
             SettlementUIController.Instance.PlaySettlementAnimation(data, () =>
             {
                 FinalizeDailySettlement();
-                CommitYesterdayProduction(totalPower);
-                EffectRuntime.Instance.NotifyDailySettle();
-                if (ResourceManager.Instance != null) ResourceManager.Instance.ProcessNextDay();
+                
                 GachaConnector.OnOffShop(true);
                 SetAnimating(false);
             });
