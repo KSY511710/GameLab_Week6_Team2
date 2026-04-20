@@ -1,64 +1,90 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 using TMPro;
+using UnityEngine;
 
 /// <summary>
 /// InventoryManager
-/// 
+///
 /// 역할:
 /// 1. 특수 블럭 가방 용량과 UI를 관리한다.
 /// 2. 일반 블럭 상점 슬롯을 생성하고 채운다.
 /// 3. 블럭 사용 후 중력을 적용해 아래 슬롯으로 당긴다.
-/// 4. 빈칸을 다시 채운다.
+/// 4. 빈 슬롯을 다시 채운다.
 /// 5. 무료 갱신 / 리롤 갱신을 처리한다.
-/// 6. 리롤 성공 시 ChangeBlock SFX를 재생한다.
-/// 
-/// 사운드 규칙:
-/// - ChangeBlock: 플레이어가 리롤 버튼을 눌러 상점을 교체할 때만 1회 재생
-/// - ProduceBlock: 여기서 재생하지 않음
-/// 
-/// 주의:
-/// - ProduceBlock 은 DraggableBlock 쪽의 "배치 성공 순간"에 재생하는 구조로 분리했다.
-/// - 따라서 InventoryManager 내부에서는 레일 소리를 재생하지 않는다.
+/// 6. 리롤 성공 시 ChangeBlock SFX를 1회 재생한다.
+///
+/// 병합 기준:
+/// - 기능 유지 기준은 "현재 동작하던 버전"을 따른다.
+/// - 즉, TryAddBlock 의 빈 슬롯 탐색 / RectTransform 보정 / 숫자만 표시되는 UI / OnButtonPressed 이벤트는 유지한다.
+/// - 추가 변경은 RequestReroll 에서 ChangeBlock 사운드를 재생하는 부분만 넣는다.
 /// </summary>
 public class InventoryManager : MonoBehaviour
 {
     /// <summary>
-    /// 전역 접근용 싱글톤 인스턴스다.
+    /// 전역 접근용 싱글톤 인스턴스.
+    /// 다른 스크립트에서 InventoryManager.Instance 로 접근할 때 사용한다.
     /// </summary>
     public static InventoryManager Instance;
 
+    /// <summary>
+    /// 리롤 버튼 성공 처리 시 외부 구독자에게 알리는 이벤트.
+    /// 기존 프로젝트에서 이미 이 이벤트를 사용하고 있을 수 있으므로 유지한다.
+    /// </summary>
+    public static event Action OnButtonPressed;
+
     [Header("🌟 가방 (특수 블록)")]
-    [Tooltip("가방에 담을 수 있는 특수 블럭 최대 개수.")]
+
+    /// <summary>
+    /// 가방에 담을 수 있는 특수 블럭 최대 개수.
+    /// </summary>
     public int maxCapacity = 12;
 
-    [Tooltip("특수 블럭이 들어갈 가방 UI 부모 Transform.")]
+    /// <summary>
+    /// 특수 블럭 UI 슬롯들의 부모 Transform.
+    /// inventoryPanel 아래 자식들을 빈 슬롯으로 간주한다.
+    /// </summary>
     public Transform inventoryPanel;
 
-    [Tooltip("현재 가방 용량 상태를 보여주는 텍스트.")]
+    /// <summary>
+    /// 현재 가방 보유량을 표시하는 텍스트.
+    /// 현재 프로젝트 동작 유지 기준으로 숫자만 표시한다.
+    /// </summary>
     public TextMeshProUGUI capacityText;
 
     [Header("🌟 상점 (일반 블록)")]
-    [Tooltip("상점 슬롯 개수.")]
+
+    /// <summary>
+    /// 상점 슬롯 개수.
+    /// </summary>
     public int maxNormalCapacity = 3;
 
-    [Tooltip("일반 블럭 슬롯들이 생성될 부모 Transform.")]
+    /// <summary>
+    /// 일반 블럭 슬롯들이 생성될 부모 Transform.
+    /// </summary>
     public Transform normalInventoryPanel;
 
-    [Tooltip("빈 상점 슬롯 프리팹.")]
+    /// <summary>
+    /// 빈 상점 슬롯 프리팹.
+    /// 상점 시작 시 maxNormalCapacity 개수만큼 생성된다.
+    /// </summary>
     public GameObject emptySlotPrefab;
 
-    [Tooltip("일반 블럭 후보 프리팹 목록.")]
+    /// <summary>
+    /// 상점에서 랜덤 생성할 일반 블럭 프리팹 목록.
+    /// </summary>
     public List<DraggableBlock> allBlockPrefabs;
 
     /// <summary>
-    /// 실제 생성된 상점 슬롯 Transform 목록이다.
+    /// 실제 생성된 상점 슬롯 Transform 목록.
+    /// ProcessGravityAndRefill / RefillNormalBlocks 에서 사용한다.
     /// </summary>
-    private List<Transform> shopSlots = new List<Transform>();
+    private readonly List<Transform> shopSlots = new List<Transform>();
 
     /// <summary>
-    /// 현재 가방에 들어있는 특수 블럭 개수다.
+    /// 현재 가방에 들어있는 특수 블럭 개수.
+    /// TryAddBlock / OnBlockUsed 에서 증감한다.
     /// </summary>
     private int currentBlockCount = 0;
 
@@ -74,7 +100,7 @@ public class InventoryManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 시작 시 슬롯을 만들고 UI를 갱신한 뒤 상점을 초기 채운다.
+    /// 시작 시 상점 슬롯을 만들고, UI를 갱신한 뒤, 상점을 초기 채운다.
     /// </summary>
     private void Start()
     {
@@ -98,15 +124,11 @@ public class InventoryManager : MonoBehaviour
 
     /// <summary>
     /// 블럭 사용 후 상점 슬롯에 중력을 적용하고, 빈 슬롯을 다시 채운다.
-    /// 
+    ///
     /// 동작:
     /// 1. 아래쪽 빈 슬롯부터 검사한다.
-    /// 2. 위쪽에 블럭이 있으면 아래로 당긴다.
-    /// 3. 마지막에 남은 빈 슬롯을 새 블럭으로 채운다.
-    /// 
-    /// 주의:
-    /// - ProduceBlock SFX는 여기서 재생하지 않는다.
-    /// - 그 소리는 DraggableBlock 배치 성공 순간에 이미 재생된다.
+    /// 2. 위쪽에 블럭이 있으면 아래 슬롯으로 이동시킨다.
+    /// 3. 이동 후 남은 빈 슬롯은 새 블럭으로 채운다.
     /// </summary>
     public void ProcessGravityAndRefill()
     {
@@ -133,24 +155,24 @@ public class InventoryManager : MonoBehaviour
 
     /// <summary>
     /// 상점의 빈 슬롯을 일반 블럭으로 채운다.
-    /// 
+    ///
     /// 동작:
-    /// 1. 비어 있는 슬롯만 검사한다.
-    /// 2. 프리팹 풀에서 랜덤 블럭을 하나 생성한다.
-    /// 3. 위쪽 위치에서 시작해 SlideToZero 애니메이션으로 내려오게 한다.
-    /// 
-    /// 주의:
-    /// - ProduceBlock SFX는 여기서 재생하지 않는다.
+    /// - 비어 있는 슬롯만 검사한다.
+    /// - 프리팹 목록 중 랜덤 하나를 생성한다.
+    /// - 위쪽에서 내려오는 연출을 위해 localPosition 을 위로 잡은 뒤 SlideToZero 를 실행한다.
     /// </summary>
     public void RefillNormalBlocks()
     {
-        if (allBlockPrefabs == null || allBlockPrefabs.Count == 0) return;
+        if (allBlockPrefabs == null || allBlockPrefabs.Count == 0)
+        {
+            return;
+        }
 
         foreach (Transform slot in shopSlots)
         {
             if (slot.childCount == 0)
             {
-                int randomIndex = Random.Range(0, allBlockPrefabs.Count);
+                int randomIndex = UnityEngine.Random.Range(0, allBlockPrefabs.Count);
                 GameObject newBlock = Instantiate(allBlockPrefabs[randomIndex].gameObject, slot);
 
                 newBlock.transform.localPosition = new Vector3(0f, 500f, 0f);
@@ -160,9 +182,9 @@ public class InventoryManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 블럭이 슬롯 내부의 현재 위치에서 Vector3.zero 까지 부드럽게 이동하도록 한다.
+    /// 슬롯 내부에서 현재 위치 → Vector3.zero 까지 부드럽게 이동시킨다.
     /// </summary>
-    /// <param name="target">이동시킬 블럭 Transform</param>
+    /// <param name="target">이동시킬 대상 Transform</param>
     private IEnumerator SlideToZero(Transform target)
     {
         Vector3 startPos = target.localPosition;
@@ -193,7 +215,7 @@ public class InventoryManager : MonoBehaviour
     /// <summary>
     /// 특수 블럭 가방이 꽉 찼는지 반환한다.
     /// </summary>
-    /// <returns>가방이 최대치 이상이면 true</returns>
+    /// <returns>현재 개수가 최대 용량 이상이면 true</returns>
     public bool IsFull()
     {
         return currentBlockCount >= maxCapacity;
@@ -201,12 +223,12 @@ public class InventoryManager : MonoBehaviour
 
     /// <summary>
     /// 특수 블럭 프리팹을 가방에 추가한다.
-    /// 
-    /// 역할:
-    /// 1. null 검사
-    /// 2. 용량 초과 검사
-    /// 3. 인스턴스 생성
-    /// 4. 현재 개수 증가 및 UI 갱신
+    ///
+    /// 기능 유지 기준으로 아래 로직을 살린다:
+    /// - inventoryPanel 자식 슬롯 중 비어 있는 슬롯을 먼저 찾는다.
+    /// - 빈 슬롯이 있으면 그 슬롯에 넣는다.
+    /// - 없으면 inventoryPanel 바로 아래에 넣는다.
+    /// - RectTransform 크기/위치/스케일을 강제로 초기화해 UI 틀어짐을 막는다.
     /// </summary>
     /// <param name="prefab">가방에 넣을 특수 블럭 프리팹</param>
     /// <returns>생성된 인스턴스, 실패 시 null</returns>
@@ -222,9 +244,41 @@ public class InventoryManager : MonoBehaviour
             return null;
         }
 
-        GameObject instance = Instantiate(prefab, inventoryPanel);
+        Transform targetEmptySlot = null;
+
+        if (inventoryPanel != null)
+        {
+            for (int i = 0; i < inventoryPanel.childCount; i++)
+            {
+                Transform slot = inventoryPanel.GetChild(i);
+
+                if (slot.childCount == 0)
+                {
+                    targetEmptySlot = slot;
+                    break;
+                }
+            }
+        }
+
+        Transform parentTransform = (targetEmptySlot != null) ? targetEmptySlot : inventoryPanel;
+        GameObject instance = Instantiate(prefab, parentTransform);
+
+        RectTransform rect = instance.GetComponent<RectTransform>();
+        if (rect != null)
+        {
+            /// <summary>
+            /// UI 프리팹이 슬롯에 들어갈 때 크기/위치가 틀어지는 문제를 막기 위한 보정.
+            /// 기존 동작 유지 기준으로 남긴다.
+            /// </summary>
+            rect.sizeDelta = new Vector2(100f, 100f);
+            rect.localPosition = Vector3.zero;
+            rect.anchoredPosition = Vector2.zero;
+            rect.localScale = Vector3.one;
+        }
+
         currentBlockCount++;
         UpdateUI();
+
         return instance;
     }
 
@@ -234,27 +288,38 @@ public class InventoryManager : MonoBehaviour
     public void OnBlockUsed()
     {
         currentBlockCount--;
+
+        /// <summary>
+        /// 방어 코드.
+        /// 예외 상황으로 음수가 되는 것을 막는다.
+        /// 기존 기능을 해치지 않는 안전장치다.
+        /// </summary>
+        if (currentBlockCount < 0)
+        {
+            currentBlockCount = 0;
+        }
+
         UpdateUI();
     }
 
     /// <summary>
     /// 가방 용량 UI를 갱신한다.
+    ///
+    /// 기능 유지 기준:
+    /// - 현재 프로젝트는 숫자만 표시하는 형태를 사용 중인 것으로 보이므로 그 형식을 유지한다.
     /// </summary>
     public void UpdateUI()
     {
         if (capacityText != null)
         {
-            capacityText.text = $"보유 블록: {currentBlockCount} / {maxCapacity}";
+            capacityText.text = $"{currentBlockCount}";
             capacityText.color = IsFull() ? Color.red : Color.white;
         }
     }
 
     /// <summary>
     /// 무료 상점 갱신 요청.
-    /// 
-    /// 역할:
-    /// - 다음 날 시작 등 무료 갱신 상황에서 사용한다.
-    /// - ChangeBlock SFX는 재생하지 않는다.
+    /// 다음 날 시작 등 무료 갱신 상황에서 사용한다.
     /// </summary>
     public void RefreshShopFree()
     {
@@ -264,17 +329,27 @@ public class InventoryManager : MonoBehaviour
 
     /// <summary>
     /// 유료 리롤 요청.
-    /// 
-    /// 역할:
-    /// 1. 리롤 비용 지불을 시도한다.
-    /// 2. 성공 시 ChangeBlock SFX를 재생한다.
-    /// 3. 이후 실제 상점 재구성 루틴을 시작한다.
+    ///
+    /// 병합 결과:
+    /// - 기존 기능 유지: OnButtonPressed 이벤트 호출 유지
+    /// - 추가 기능: 리롤 성공 시 ChangeBlock 사운드 1회 재생
     /// </summary>
     public void RequestReroll()
     {
         if (ResourceManager.Instance != null && ResourceManager.Instance.TryPayForReroll())
         {
+            /// <summary>
+            /// 기존 프로젝트에서 사용하던 성공 이벤트.
+            /// 외부에서 애니메이션 / 버튼 효과 / 다른 처리에 물려 있을 수 있으므로 유지한다.
+            /// </summary>
+            OnButtonPressed?.Invoke();
+
+            /// <summary>
+            /// 이번 병합에서 추가되는 사운드 재생.
+            /// 리롤이 실제로 성공했을 때만 1회 재생한다.
+            /// </summary>
             PlayChangeBlockSfx();
+
             StartCoroutine(RefreshShopRoutine());
         }
         else
@@ -284,16 +359,7 @@ public class InventoryManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 현재 상점 블럭을 모두 비우고 다시 채우는 공통 갱신 루틴이다.
-    /// 
-    /// 동작:
-    /// 1. 각 슬롯의 현재 블럭을 파괴한다.
-    /// 2. Destroy 반영을 위해 한 프레임 대기한다.
-    /// 3. 새 블럭을 다시 채운다.
-    /// 
-    /// 주의:
-    /// - ChangeBlock SFX는 RequestReroll 에서만 재생한다.
-    /// - ProduceBlock SFX는 여기서 재생하지 않는다.
+    /// 현재 상점 블럭을 모두 비우고 다시 채우는 공통 갱신 루틴.
     /// </summary>
     private IEnumerator RefreshShopRoutine()
     {
@@ -306,12 +372,12 @@ public class InventoryManager : MonoBehaviour
         }
 
         yield return null;
-
         RefillNormalBlocks();
     }
 
     /// <summary>
     /// 리롤 교체음(ChangeBlock)을 안전하게 재생한다.
+    /// 사운드 매니저가 없을 때 NullReference 가 나지 않도록 방어한다.
     /// </summary>
     private void PlayChangeBlockSfx()
     {
