@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Special.Data.SpecialBlockDefinition
   id: rewinder
   displayName: "\uB418\uAC10\uAE30"
-  icon: {fileID: 5797254098664026104, guid: 9c0b05a9ef227ed4ea5ea0056710643c, type: 3}
+  icon: {fileID: -1984412570815720227, guid: 1be35203f965e3c499cb32742c566190, type: 3}
   shapeCoords:
   - {x: 0, y: 0}
   allowRotation: 0

@@ -25,15 +25,6 @@ MonoBehaviour:
   - definition: {fileID: 11400000, guid: 6aebf3a28e0793f458bb8663fbf8c0be, type: 2}
     weight: 1
     isEnabled: 1
-  - definition: {fileID: 11400000, guid: a80af08ff7065634cbc38e6d0ecb9255, type: 2}
-    weight: 1
-    isEnabled: 1
-  - definition: {fileID: 11400000, guid: 0c0b7cb772d9b084e956754c247401a3, type: 2}
-    weight: 1
-    isEnabled: 1
-  - definition: {fileID: 11400000, guid: d83e5140d1310b8479009f1ef7ac9725, type: 2}
-    weight: 1
-    isEnabled: 1
   - definition: {fileID: 11400000, guid: 540a8f0d54c6bf84090743dc8b7ce0b0, type: 2}
     weight: 1
     isEnabled: 1
